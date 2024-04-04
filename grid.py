@@ -12,7 +12,7 @@ colours = np.array(["black", "red", "green", "blue", "yellow"])
 
 class Grid:
     def __init__(self):
-        self.grid = np.zeros((ROWS, COLS, 3), np.int16)
+        self.grid = np.zeros((ROWS, COLS, 2), np.int16)
 
         chucks_width = int(np.ceil(COLS / CHUNK_SIZE))
         chucks_height = int(np.ceil(ROWS / CHUNK_SIZE))
@@ -47,11 +47,7 @@ class Grid:
 
                 for i in range(i_chunk * CHUNK_SIZE, (i_chunk + 1) * CHUNK_SIZE):
                     for j in range(j_chunk * CHUNK_SIZE, (j_chunk + 1) * CHUNK_SIZE):
-                        colour = (
-                            colours[self.grid[j, i, 0]]
-                            if self.grid[j, i, 2] == 0
-                            else "white"
-                        )
+                        colour = colours[self.grid[j, i, 0]]
                         pygame.draw.rect(
                             self.screen,
                             pygame.Color(colour),
@@ -138,28 +134,6 @@ class Grid:
         self.grid = next_grid
 
     def update_item(self, i, j, next_grid):
-        # clear row
-        if self.grid[i, j, 2] == 1:
-
-            next_grid[i, j] = 0
-            colour = self.grid[i, j, 0]
-            self.grid[i, j] = 0
-
-            if i + 1 < ROWS and self.grid[i + 1, j, 0] == colour:
-                # next_grid[i + 1, j, 1] = 0
-                next_grid[i + 1, j, 2] = 1
-
-            if i + 1 >= 0 and self.grid[i - 1, j, 0] == colour:
-                # next_grid[i - 1, j, 1] = 0
-                next_grid[i - 1, j, 2] = 1
-            if j + 1 < COLS and self.grid[i, j + 1, 0] == colour:
-                # next_grid[i, j + 1, 1] = 0
-                next_grid[i, j + 1, 2] = 1
-            if j - 1 >= 0 and self.grid[i, j - 1, 0] == colour:
-                # next_grid[i, j - 1, 1] = 0
-                next_grid[i, j - 1, 2] = 1
-
-            return True
 
         # check if empty
         if self.grid[i, j, 0] == 0:
@@ -300,14 +274,6 @@ class Grid:
 
                 for i, j in path:
                     self.grid[i, j, 0] = 0
-                    self.chunks[
-                        math.floor((i / CHUNK_SIZE) - 1) : math.ceil(
-                            (i / CHUNK_SIZE) + 2
-                        ),
-                        math.floor((j / CHUNK_SIZE) - 1) : math.ceil(
-                            (j / CHUNK_SIZE) + 2
-                        ),
-                    ] = 5
 
             for i, j in path:
 
@@ -318,16 +284,45 @@ class Grid:
                 )
 
             last_path = path
+            self.chunks[:, :] = 5
 
     def clear(self):
 
-        # find all colours that have a grain in each colour
+        # find all colours that have a grain in each coloumn
         possible_colours = [
             colour
             for colour in range(1, len(colours))
             if all(colour in self.grid[:, i, 0] for i in range(COLS))
         ]
 
+        # for each colour check if there is a possible path
+        _possible_colours = []
+        for colour in possible_colours:
+            left_min, right_min, left_max, right_max = ROWS - 1, ROWS - 1, 0, 0
+            for row in range(ROWS - 1):
+                if self.grid[row, 0, 0] == colour:
+                    left_min = min(left_min, row)
+                    left_max = max(left_max, row)
+
+                if self.grid[row, -1, 0] == colour:
+                    right_min = min(right_min, row)
+                    right_max = max(right_max, row)
+            possible = True
+            if left_min < right_max:
+                for i in range(left_min + 1, right_max):
+                    if colour not in self.grid[i, :, 0]:
+                        possible = False
+
+            if left_max > right_min:
+                for i in range(right_min + 1, left_max):
+                    if colour not in self.grid[i, :, 0]:
+                        possible = False
+            if possible:
+
+                _possible_colours.append(colour)
+            else:
+                print(colour)
+        possible_colours = _possible_colours
         # for each possible colour
         for colour in possible_colours:
             self.find_colour_path(colour)

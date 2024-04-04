@@ -47,6 +47,8 @@ def main():
                     pressing_down = True
                 if event.key == pygame.K_UP:
                     tetris.rotate()
+                if event.key == pygame.K_o:
+                    tetris.new_piece()
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_DOWN:
