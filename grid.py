@@ -7,7 +7,7 @@ import pygame
 
 from consts import *
 
-colors = np.array(["black", "red", "green", "blue", "yellow"])
+colours = np.array(["black", "red", "green", "blue", "yellow"])
 
 
 class Grid:
@@ -50,7 +50,7 @@ class Grid:
 
                         pygame.draw.rect(
                             self.screen,
-                            pygame.Color(colors[self.grid[j, i, 0]]),
+                            pygame.Color(colours[self.grid[j, i, 0]]),
                             (i * GRAIN_SIZE, j * GRAIN_SIZE, GRAIN_SIZE, GRAIN_SIZE),
                         )
 
@@ -198,25 +198,31 @@ class Grid:
                         self.chunks[i, j] = -1
 
     def piece_touching(self, i, j):
-        ratio = 10
+
+        ratio = 1
         y = int(j * ratio)
         x = int(i * ratio)
 
         return not np.all(self.grid[x : x + ratio, y : y + ratio] == 0)
 
-    def place(self, i, j, type):
-
-        ratio = 10
-        y = int(j * ratio)
-        x = int(i * ratio)
+    def place(self, i, j, colour):
 
         self.chunks[
-            math.floor(j - 1) : math.ceil(j + 1), math.floor(i - 1) : math.ceil(i + 1)
+            math.floor((j / CHUNK_SIZE) - 1) : math.ceil((j / CHUNK_SIZE) + 1),
+            math.floor((i / CHUNK_SIZE) - 1) : math.ceil((i / CHUNK_SIZE) + 1),
         ] = 5
-        self.grid[x : x + ratio, y : y + ratio, 0] = type
-        self.grid[x : x + ratio, y : y + ratio, 1] = 300
+
+        self.grid[i : i + 10, j : j + 10, 0] = colour
+        self.grid[i : i + 10, j : j + 10, 1] = 150
 
     def update(self, win):
         self.update_grid()
 
         self.draw(win)
+        self.clear()
+
+    def clear(self):
+        for colour in range(1, len(colours)):
+
+            if all(colour in self.grid[:, i, 0] for i in range(COLS)):
+                print(colour)

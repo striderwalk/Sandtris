@@ -2,10 +2,19 @@ import numpy as np
 import pygame
 import random
 
-from consts import GRAIN_SIZE, GRID_COLS, GRID_ROWS, HEIGHT, PIECE_SIZE, WIDTH
+from consts import (
+    COLS,
+    GRAIN_SIZE,
+    GRID_COLS,
+    GRID_ROWS,
+    HEIGHT,
+    PIECE_SIZE,
+    ROWS,
+    WIDTH,
+)
 from grid import Grid
 
-colors = ["white", "red", "green", "blue", "yellow"]
+colours = ["white", "red", "green", "blue", "yellow"]
 
 
 class Piece:
@@ -13,24 +22,39 @@ class Piece:
     y = 0
 
     pieces = [
-        [[1, 5, 9, 13], [4, 5, 6, 7]],
-        [[4, 5, 9, 10], [2, 6, 5, 9]],
-        [[6, 7, 9, 10], [1, 5, 6, 10]],
-        [[1, 2, 5, 9], [0, 4, 5, 6], [1, 5, 9, 8], [4, 5, 6, 10]],
-        [[1, 2, 6, 10], [5, 6, 7, 9], [2, 6, 10, 11], [3, 5, 6, 7]],
-        [[1, 4, 5, 6], [1, 4, 5, 9], [4, 5, 6, 9], [1, 5, 6, 9]],
-        [[1, 2, 5, 6]],
+        [[4, 5, 6, 7], [2, 6, 10, 14], [8, 9, 10, 11], [1, 5, 9, 13]],  # I
+        [[0, 4, 5, 6], [1, 2, 5, 9], [4, 5, 6, 10], [1, 5, 9, 8]],  # J
+        [[4, 5, 6, 2], [1, 5, 9, 10], [4, 5, 6, 8], [0, 1, 5, 9]],  # L
+        [[1, 2, 4, 5], [1, 5, 6, 10], [5, 6, 8, 9], [0, 4, 5, 9]],  # S
+        [[0, 1, 5, 6], [2, 5, 6, 9], [4, 5, 9, 10], [1, 4, 5, 8]],  # Z
+        [[1, 4, 5, 6], [1, 5, 6, 9], [4, 5, 6, 9], [1, 4, 5, 9]],  # T
+        [[1, 2, 5, 6]],  # O
     ]
 
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.type = random.randint(0, len(self.pieces) - 1)
-        self.color = random.randint(1, len(colors) - 1)
+        self.type = random.randint(0, 6)
+        self.color = random.randint(1, len(colours) - 1)
         self.rotation = 0
 
+    def full_image(self):
+        parts = set()
+        for image in self.pieces[self.type][self.rotation]:
+            i, j = int(image // 4), int(image % 4)
+            parts.add((i, j))
+            parts.add((i + 1, j))
+            parts.add((i, j + 1))
+            parts.add((i + 1, j + 1))
+
+        return parts
+
+    @property
     def image(self):
-        return self.pieces[self.type][self.rotation]
+
+        return [
+            (int(i // 4), int(i % 4)) for i in self.pieces[self.type][self.rotation]
+        ]
 
     def rotate(self):
         self.rotation = (self.rotation + 1) % len(self.pieces[self.type])
@@ -45,22 +69,19 @@ class Sandtris:
         self.score = 0
 
     def new_piece(self):
-        self.piece = Piece(3, 0)
+        self.piece = Piece(100, 0)
 
     def intersects(self):
-
-        intersection = False
-        for i in range(4):
-            for j in range(4):
-                if i * 4 + j in self.piece.image():
-                    if (
-                        i + self.piece.y > GRID_COLS - 1
-                        or j + self.piece.x > GRID_ROWS - 1
-                        or j + self.piece.x < 0
-                        or self.grid.piece_touching(i + self.piece.y, j + self.piece.x)
-                    ):
-                        intersection = True
-        return intersection
+        for i, j in self.piece.full_image():
+            x = j * 10 + self.piece.x
+            y = i * 10 + self.piece.y
+            if (
+                y + 10 > ROWS - 1
+                or x + 10 > COLS - 1
+                or x < 0
+                or self.grid.piece_touching(y, j * 10 + x)
+            ):
+                return True
 
     def press_space(self):
         while not self.intersects():
@@ -69,18 +90,20 @@ class Sandtris:
         self.freeze()
 
     def go_down(self):
-        self.piece.y += 0.2
+        self.piece.y += 1
         if self.intersects():
-            self.piece.y -= 0.2
+            self.piece.y -= 1
             self.freeze()
 
     def freeze(self):
-        for i in range(4):
-            for j in range(4):
-                if i * 4 + j in self.piece.image():
-                    self.grid.place(
-                        i + self.piece.y, j + self.piece.x, self.piece.color
-                    )
+
+        for i, j in self.piece.image:
+
+            self.grid.place(
+                i * 10 + self.piece.y,
+                j * 10 + self.piece.x,
+                self.piece.color,
+            )
         self.piece = None
 
     def go_side(self, dx):
@@ -109,20 +132,19 @@ class Sandtris:
 
     def draw(self, win):
         if self.piece is not None:
-            for i in range(4):
-                for j in range(4):
-                    p = i * 4 + j
-                    if p in self.piece.image():
-                        pygame.draw.rect(
-                            win,
-                            colors[self.piece.color],
-                            [
-                                PIECE_SIZE * (j + self.piece.x) + 1,
-                                PIECE_SIZE * (i + self.piece.y) + 1,
-                                PIECE_SIZE - 2,
-                                PIECE_SIZE - 2,
-                            ],
-                        )
+
+            for i, j in self.piece.image:
+
+                pygame.draw.rect(
+                    win,
+                    colours[self.piece.color],
+                    [
+                        GRAIN_SIZE * (10 * j + self.piece.x) + 0.5,
+                        GRAIN_SIZE * (10 * i + self.piece.y) + 0.5,
+                        PIECE_SIZE - 1,
+                        PIECE_SIZE - 1,
+                    ],
+                )
 
     def update(self, win):
         if self.piece == None:
