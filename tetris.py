@@ -75,12 +75,7 @@ class Sandtris:
         for i, j in self.piece.full_image():
             x = j * 10 + self.piece.x
             y = i * 10 + self.piece.y
-            if (
-                y + 10 > ROWS - 1
-                or x + 10 > COLS - 1
-                or x < 0
-                or self.grid.piece_touching(y, j * 10 + x)
-            ):
+            if y > ROWS or x > COLS or x < 0 or self.grid.piece_touching(y, j * 10 + x):
                 return True
 
     def press_space(self):

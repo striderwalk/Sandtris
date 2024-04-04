@@ -12,7 +12,7 @@ colours = np.array(["black", "red", "green", "blue", "yellow"])
 
 class Grid:
     def __init__(self):
-        self.grid = np.zeros((ROWS, COLS, 2), np.int16)
+        self.grid = np.zeros((ROWS, COLS, 3), np.int16)
 
         chucks_width = int(np.ceil(COLS / CHUNK_SIZE))
         chucks_height = int(np.ceil(ROWS / CHUNK_SIZE))
@@ -38,7 +38,7 @@ class Grid:
                 else:
                     self.chunks[i, j] = 5
 
-    def draw(self, win):
+    def draw(self):
 
         for i_chunk in range(len(self.chunks)):
             for j_chunk in range(len(self.chunks[i_chunk])):
@@ -47,14 +47,16 @@ class Grid:
 
                 for i in range(i_chunk * CHUNK_SIZE, (i_chunk + 1) * CHUNK_SIZE):
                     for j in range(j_chunk * CHUNK_SIZE, (j_chunk + 1) * CHUNK_SIZE):
-
+                        colour = (
+                            colours[self.grid[j, i, 0]]
+                            if self.grid[j, i, 2] == 0
+                            else "white"
+                        )
                         pygame.draw.rect(
                             self.screen,
-                            pygame.Color(colours[self.grid[j, i, 0]]),
+                            pygame.Color(colour),
                             (i * GRAIN_SIZE, j * GRAIN_SIZE, GRAIN_SIZE, GRAIN_SIZE),
                         )
-
-        win.blit(self.screen, (0, 0))
 
     def draw_chunks(self, win):
         my_font = pygame.font.SysFont("Helvetica", 30)
@@ -98,6 +100,7 @@ class Grid:
             for j_chunk in range(len(self.chunks[i_chunk])):
 
                 if self.chunks[i_chunk, j_chunk] <= 0:
+
                     continue
 
                 # find real range chunk
@@ -135,6 +138,28 @@ class Grid:
         self.grid = next_grid
 
     def update_item(self, i, j, next_grid):
+        # clear row
+        if self.grid[i, j, 2] == 1:
+
+            next_grid[i, j] = 0
+            colour = self.grid[i, j, 0]
+            self.grid[i, j] = 0
+
+            if i + 1 < ROWS and self.grid[i + 1, j, 0] == colour:
+                # next_grid[i + 1, j, 1] = 0
+                next_grid[i + 1, j, 2] = 1
+
+            if i + 1 >= 0 and self.grid[i - 1, j, 0] == colour:
+                # next_grid[i - 1, j, 1] = 0
+                next_grid[i - 1, j, 2] = 1
+            if j + 1 < COLS and self.grid[i, j + 1, 0] == colour:
+                # next_grid[i, j + 1, 1] = 0
+                next_grid[i, j + 1, 2] = 1
+            if j - 1 >= 0 and self.grid[i, j - 1, 0] == colour:
+                # next_grid[i, j - 1, 1] = 0
+                next_grid[i, j - 1, 2] = 1
+
+            return True
 
         # check if empty
         if self.grid[i, j, 0] == 0:
@@ -157,7 +182,7 @@ class Grid:
         if self.grid[i, j, 1] <= 0:
             return False
         # move left or right randomly
-        if j + direction < COLS and j + direction > 0:
+        if j + direction < COLS and j + direction >= 0:
             if (
                 self.grid[i, j + direction][0] == 0
                 and next_grid[i, j + direction][0] == 0
@@ -170,7 +195,7 @@ class Grid:
 
                 return True
 
-        if j - direction < COLS and j - direction > 0:
+        if j - direction < COLS and j - direction >= 0:
             if (
                 self.grid[i, j - direction][0] == 0
                 and next_grid[i, j - direction][0] == 0
@@ -218,11 +243,91 @@ class Grid:
     def update(self, win):
         self.update_grid()
 
-        self.draw(win)
+        self.draw()
+        win.blit(self.screen, (0, 0))
         self.clear()
 
-    def clear(self):
-        for colour in range(1, len(colours)):
+    def _find_colour_path(self, colour, row):
+        path = {(row, 0)}
+        new = {(row, 0)}
+        complete = False
+        while not complete:
 
-            if all(colour in self.grid[:, i, 0] for i in range(COLS)):
-                print(colour)
+            next_new = set()
+
+            for i, j in new:
+                if j + 1 < COLS and self.grid[i, j + 1, 0] == colour:
+                    if (i, j + 1) not in path and (i, j + 1) not in new:
+                        next_new.add((i, j + 1))
+
+                if i + 1 < ROWS and self.grid[i + 1, j, 0] == colour:
+                    if (i + 1, j) not in path and (i + 1, j) not in new:
+
+                        next_new.add((i + 1, j))
+                if i - 1 >= 0 and self.grid[i - 1, j, 0] == colour:
+                    if (i - 1, j) not in path and (i - 1, j) not in new:
+
+                        next_new.add((i - 1, j))
+
+                if j - 1 >= 0 and self.grid[i, j - 1, 0] == colour:
+                    if (i, j - 1) not in path and (i, j - 1) not in new:
+                        next_new.add((i, j - 1))
+
+            if not next_new:
+                complete = True
+
+            path = path.union(new)
+            new = next_new
+        return path
+
+    def find_colour_path(self, colour):
+
+        last_path = set()
+        # find the start point of a possible colour line
+        for row in range(ROWS):
+            # check if the current start point is the correct colour
+            if self.grid[row, 0, 0] != colour:
+                continue
+
+            # check if has already been seen
+            if (row, 0) in last_path:
+                continue
+
+            # start finding the paths
+            path = self._find_colour_path(colour, row)
+
+            if any(j == COLS - 1 for i, j in path):
+
+                for i, j in path:
+                    self.grid[i, j, 0] = 0
+                    self.chunks[
+                        math.floor((i / CHUNK_SIZE) - 1) : math.ceil(
+                            (i / CHUNK_SIZE) + 2
+                        ),
+                        math.floor((j / CHUNK_SIZE) - 1) : math.ceil(
+                            (j / CHUNK_SIZE) + 2
+                        ),
+                    ] = 5
+
+            for i, j in path:
+
+                pygame.draw.rect(
+                    self.screen,
+                    pygame.Color("white"),
+                    (i * GRAIN_SIZE, j * GRAIN_SIZE, GRAIN_SIZE * 2, GRAIN_SIZE * 2),
+                )
+
+            last_path = path
+
+    def clear(self):
+
+        # find all colours that have a grain in each colour
+        possible_colours = [
+            colour
+            for colour in range(1, len(colours))
+            if all(colour in self.grid[:, i, 0] for i in range(COLS))
+        ]
+
+        # for each possible colour
+        for colour in possible_colours:
+            self.find_colour_path(colour)
