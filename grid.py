@@ -260,6 +260,7 @@ class Grid:
         # find the start point of a possible colour line
         for row in range(ROWS):
             # check if the current start point is the correct colour
+
             if self.grid[row, 0, 0] != colour:
                 continue
 
@@ -320,8 +321,7 @@ class Grid:
             if possible:
 
                 _possible_colours.append(colour)
-            else:
-                print(colour)
+
         possible_colours = _possible_colours
         # for each possible colour
         for colour in possible_colours:
