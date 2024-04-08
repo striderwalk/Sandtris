@@ -5,6 +5,7 @@ import random
 
 import numpy as np
 import pygame
+import tcod
 from tqdm import tqdm
 
 from consts import *
@@ -30,8 +31,7 @@ class Grid:
         self.screen = pygame.Surface((GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT))
         self.screen.fill(pygame.Color("white"))
 
-        # Store current possible paths to optimize line clearing
-        self.clear_puase = 0
+        self.clearing = False
 
     def check_chunks(self):
         for i in range(len(self.chunks)):
@@ -226,144 +226,68 @@ class Grid:
             self.grid[i : i + 10, j : j + 10, 1] = 50
 
     def update(self, win):
-        self.update_grid()
+        if not self.clearing:
+            self.update_grid()
+        else:
 
+            self.next_clear()
         self.draw()
         self.clear()
         win.blit(self.screen, (0, 0))
         self.draw_chunks(win)
 
-        # self.chunks[:, 20:] = 1
-
-    def _find_colour_path(self, colour, row):
-        path = {(row, 0)}
-        new = {(row, 0)}
-
-        complete = False
-
-        while not complete:
-
-            next_new = set()
-
-            for i, j in new:
-                if j + 1 < COLS and self.grid[i, j + 1, 0] == colour:
-                    if (i, j + 1) not in path and (i, j + 1) not in new:
-                        next_new.add((i, j + 1))
-
-                if i + 1 < ROWS and self.grid[i + 1, j, 0] == colour:
-                    if (i + 1, j) not in path and (i + 1, j) not in new:
-
-                        next_new.add((i + 1, j))
-                if i - 1 >= 0 and self.grid[i - 1, j, 0] == colour:
-                    if (i - 1, j) not in path and (i - 1, j) not in new:
-
-                        next_new.add((i - 1, j))
-
-                if j - 1 >= 0 and self.grid[i, j - 1, 0] == colour:
-                    if (i, j - 1) not in path and (i, j - 1) not in new:
-                        next_new.add((i, j - 1))
-
-            if not next_new:
-                complete = True
-
-            path = path.union(new)
-            new = next_new
-
-        return path
-
-    def find_colour_path(self, colour):
-
-        # find the start point of a possible colour line
-        last_path = set()
-
-        for row in range(ROWS):
-
-            # check if the current start point is the correct colour
-
-            if self.grid[row, 0, 0] != colour:
-                continue
-
-            # check if has already been seen
-            if (row, 0) in last_path:
-                continue
-
-            # Find the points in the path
-            path = self._find_colour_path(colour, row)
-
-            # Check if the path is completed
-            if any(j == COLS - 1 for i, j in path):
-                for i, j in path:
-                    self.grid[i, j, 0] = 0
-
-                self.chunks[:, :] = 5
-
-            else:
-                saved_path = set()
-                for i, j in path:
-                    if self.grid[i, j, 1] <= 0:
-                        saved_path.add((i, j))
-            if path:
-
-                path_list = list(path)
-
-                for i in range(len(path_list)):
-
-                    pygame.draw.circle(
-                        self.screen,
-                        (255, 255, 255),
-                        (
-                            path_list[i][1] * GRAIN_SIZE,
-                            path_list[i][0] * GRAIN_SIZE,
-                        ),
-                        1,
-                    )
-            last_path = path
-
-        # pygame.display.flip()
-
     def clear(self):
-
-        if self.clear_puase == 1:
-            return
-        if self.clear_puase > 0:
-            self.clear_puase -= 1
-        # find all colours that have a grain in each coloumn
         possible_colours = [
             colour
             for colour in range(1, len(colours))
             if all(colour in self.grid[:, i, 0] for i in range(COLS))
         ]
-
-        if not np.all(self.chunks == 0):
-            self.clear_puase = 2
-
-        # for each colour check if there is a possible path
-        _possible_colours = []
         for colour in possible_colours:
-            left_min, right_min, left_max, right_max = ROWS - 1, ROWS - 1, 0, 0
-            for row in range(ROWS - 1):
-                if self.grid[row, 0, 0] == colour:
-                    left_min = min(left_min, row)
-                    left_max = max(left_max, row)
 
-                if self.grid[row, -1, 0] == colour:
-                    right_min = min(right_min, row)
-                    right_max = max(right_max, row)
-            possible = True
-            if left_min < right_max:
-                for i in range(left_min + 1, right_max):
-                    if colour not in self.grid[i, :, 0]:
-                        possible = False
+            # Setup the graph for the given colour
+            graph = tcod.path.SimpleGraph(
+                cost=np.where(self.grid != colour, 0, self.grid)[:, :, 0],
+                cardinal=2,
+                diagonal=3,
+            )
+            pathfinder = tcod.path.Pathfinder(graph)
+            for i in range(ROWS):
 
-            if left_max > right_min:
-                for i in range(right_min + 1, left_max):
-                    if colour not in self.grid[i, :, 0]:
-                        possible = False
-            if possible:
+                if self.grid[i, 0, 0] == colour:
 
-                _possible_colours.append(colour)
+                    pathfinder.add_root((i, 0))
+                    for i in range(ROWS):
+                        if self.grid[i, COLS - 1, 0] == colour:
 
-        possible_colours = _possible_colours
-        # for each possible colour
-        for colour in possible_colours:
-            self.find_colour_path(colour)
+                            path = pathfinder.path_to((i, COLS - 1)).tolist()
+
+                            if len(path) > 1:
+                                print(path)
+                                self.clearing = True
+                                self.path = set(tuple(i) for i in path)
+                                self.clear_colour = colour
+                                self.chunks[:, :] = 1
+
+    def next_clear(self):
+        next_path = set(self.path)
+
+        for i, j in self.path:
+            if j + 1 < COLS and self.grid[i, j + 1, 0] == self.clear_colour:
+                next_path.add((i, j + 1))
+
+            if i + 1 < ROWS and self.grid[i + 1, j, 0] == self.clear_colour:
+                next_path.add((i + 1, j))
+
+            if i - 1 >= 0 and self.grid[i - 1, j, 0] == self.clear_colour:
+                next_path.add((i - 1, j))
+
+            if j - 1 >= 0 and self.grid[i, j - 1, 0] == self.clear_colour:
+                next_path.add((i, j - 1))
+
+        for i, j in self.path:
+            self.grid[i, j, :] = 0
+
+        if self.path == next_path:
+            self.clearing = False
+            return
+        self.path = next_path
