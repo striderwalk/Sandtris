@@ -47,7 +47,7 @@ class Grid:
                 else:
                     self.chunks[i, j] = 5
 
-    def draw(self):
+    def draw(self, win):
 
         for i_chunk in range(len(self.chunks)):
             for j_chunk in range(len(self.chunks[i_chunk])):
@@ -62,6 +62,16 @@ class Grid:
                             pygame.Color(colour),
                             (i * GRAIN_SIZE, j * GRAIN_SIZE, GRAIN_SIZE, GRAIN_SIZE),
                         )
+        if self.clearing:
+
+            for j, i in self.new_path:
+                pygame.draw.rect(
+                    self.screen,
+                    pygame.Color("white"),
+                    (i * GRAIN_SIZE, j * GRAIN_SIZE, GRAIN_SIZE, GRAIN_SIZE),
+                )
+
+        win.blit(self.screen, (0, 0))
 
     def draw_chunks(self, win):
         my_font = pygame.font.SysFont("Helvetica", 30)
@@ -229,12 +239,11 @@ class Grid:
         if not self.clearing:
             self.update_grid()
         else:
-
             self.next_clear()
-        self.draw()
+
+        self.draw(win)
         self.clear()
-        win.blit(self.screen, (0, 0))
-        self.draw_chunks(win)
+        # self.draw_chunks(win)
 
     def clear(self):
         possible_colours = [
@@ -270,19 +279,24 @@ class Grid:
                                 return
 
     def next_clear(self):
+        self.new_path = set()
         next_path = set(self.path)
 
         for i, j in self.path:
             if j + 1 < COLS and self.grid[i, j + 1, 0] == self.clear_colour:
+                self.new_path.add((i, j + 1))
                 next_path.add((i, j + 1))
 
             if i + 1 < ROWS and self.grid[i + 1, j, 0] == self.clear_colour:
+                self.new_path.add((i + 1, j))
                 next_path.add((i + 1, j))
 
             if i - 1 >= 0 and self.grid[i - 1, j, 0] == self.clear_colour:
+                self.new_path.add((i - 1, j))
                 next_path.add((i - 1, j))
 
             if j - 1 >= 0 and self.grid[i, j - 1, 0] == self.clear_colour:
+                self.new_path.add((i, j - 1))
                 next_path.add((i, j - 1))
 
         for i, j in self.path:
