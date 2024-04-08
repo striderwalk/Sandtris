@@ -57,9 +57,9 @@ def main():
         keys = pygame.key.get_pressed()
 
         if keys[pygame.K_LEFT]:
-            tetris.go_side(-1)
+            tetris.go_side(-2)
         if keys[pygame.K_RIGHT]:
-            tetris.go_side(1)
+            tetris.go_side(2)
 
         # update frame
         pygame.display.flip()

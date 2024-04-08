@@ -1,16 +1,12 @@
-import numpy as np
 import pygame
 import random
 
 from consts import (
     COLS,
+    GAME_SCREEN_WIDTH,
     GRAIN_SIZE,
-    GRID_COLS,
-    GRID_ROWS,
-    HEIGHT,
     PIECE_SIZE,
     ROWS,
-    WIDTH,
 )
 from grid import Grid
 
@@ -65,11 +61,11 @@ class Sandtris:
         self.grid = Grid()
 
         self.piece = None
-        self.field = np.zeros((GRID_COLS, GRID_ROWS), dtype=np.int8)
         self.score = 0
 
     def new_piece(self):
-        self.piece = Piece(100, 0)
+        # self.piece = Piece(int(GAME_SCREEN_WIDTH / 2), 0)
+        self.piece = Piece(10, 0)
 
     def intersects(self):
         for i, j in self.piece.full_image():
@@ -91,14 +87,14 @@ class Sandtris:
             self.freeze()
 
     def freeze(self):
+        self.grid.place(
+            [
+                (i * 10 + self.piece.y, j * 10 + self.piece.x)
+                for i, j in self.piece.image
+            ],
+            self.piece.color,
+        )
 
-        for i, j in self.piece.image:
-
-            self.grid.place(
-                i * 10 + self.piece.y,
-                j * 10 + self.piece.x,
-                self.piece.color,
-            )
         self.piece = None
 
     def go_side(self, dx):
@@ -116,9 +112,9 @@ class Sandtris:
         while self.intersects():
             count += 1
             if self.piece.x < 5:
-                self.piece.x += 1
+                self.piece.x += 10
             else:
-                self.piece.x -= 1
+                self.piece.x -= 10
 
             if count > 5:
                 self.piece.rotation = old_rotation

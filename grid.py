@@ -1,9 +1,11 @@
 from copy import deepcopy
 import math
+from queue import Queue
 import random
 
 import numpy as np
 import pygame
+from tqdm import tqdm
 
 from consts import *
 
@@ -12,8 +14,11 @@ colours = np.array(["black", "red", "green", "blue", "yellow"])
 
 class Grid:
     def __init__(self):
+
+        # Store the sand
         self.grid = np.zeros((ROWS, COLS, 2), np.int16)
 
+        # Chunks used to optimize sand updates
         chucks_width = int(np.ceil(COLS / CHUNK_SIZE))
         chucks_height = int(np.ceil(ROWS / CHUNK_SIZE))
 
@@ -21,8 +26,12 @@ class Grid:
             ([[2 for _ in range(chucks_height)] for _ in range(chucks_width)])
         )
 
-        self.screen = pygame.surface.Surface((GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT))
+        # Surface to draw sand to
+        self.screen = pygame.Surface((GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT))
         self.screen.fill(pygame.Color("white"))
+
+        # Store current possible paths to optimize line clearing
+        self.clear_puase = 0
 
     def check_chunks(self):
         for i in range(len(self.chunks)):
@@ -191,7 +200,8 @@ class Grid:
 
             for j in range(max(0, j_chunk - 1), min(j_chunk + 2, len(self.chunks[0]))):
                 if self.chunks[i, j] == 0:
-                    if (self.chunks[i, j] == 0).all():
+                    if np.all(self.chunks[i, j] == 0):
+
                         self.chunks[i, j] = 1
                     else:
                         self.chunks[i, j] = -1
@@ -204,27 +214,33 @@ class Grid:
 
         return not np.all(self.grid[x : x + ratio, y : y + ratio] == 0)
 
-    def place(self, i, j, colour):
+    def place(self, image, colour):
+        self.clear_puase = 0
+        for i, j in image:
+            self.chunks[
+                math.floor((j / CHUNK_SIZE) - 1) : math.ceil((j / CHUNK_SIZE) + 1),
+                math.floor((i / CHUNK_SIZE) - 1) : math.ceil((i / CHUNK_SIZE) + 1),
+            ] = 5
 
-        self.chunks[
-            math.floor((j / CHUNK_SIZE) - 1) : math.ceil((j / CHUNK_SIZE) + 1),
-            math.floor((i / CHUNK_SIZE) - 1) : math.ceil((i / CHUNK_SIZE) + 1),
-        ] = 5
-
-        self.grid[i : i + 10, j : j + 10, 0] = colour
-        self.grid[i : i + 10, j : j + 10, 1] = 150
+            self.grid[i : i + 10, j : j + 10, 0] = colour
+            self.grid[i : i + 10, j : j + 10, 1] = 50
 
     def update(self, win):
         self.update_grid()
 
         self.draw()
-        win.blit(self.screen, (0, 0))
         self.clear()
+        win.blit(self.screen, (0, 0))
+        self.draw_chunks(win)
+
+        # self.chunks[:, 20:] = 1
 
     def _find_colour_path(self, colour, row):
         path = {(row, 0)}
         new = {(row, 0)}
+
         complete = False
+
         while not complete:
 
             next_new = set()
@@ -252,13 +268,16 @@ class Grid:
 
             path = path.union(new)
             new = next_new
+
         return path
 
     def find_colour_path(self, colour):
 
-        last_path = set()
         # find the start point of a possible colour line
+        last_path = set()
+
         for row in range(ROWS):
+
             # check if the current start point is the correct colour
 
             if self.grid[row, 0, 0] != colour:
@@ -268,33 +287,55 @@ class Grid:
             if (row, 0) in last_path:
                 continue
 
-            # start finding the paths
+            # Find the points in the path
             path = self._find_colour_path(colour, row)
 
+            # Check if the path is completed
             if any(j == COLS - 1 for i, j in path):
-
                 for i, j in path:
                     self.grid[i, j, 0] = 0
 
-            for i, j in path:
+                self.chunks[:, :] = 5
 
-                pygame.draw.rect(
-                    self.screen,
-                    pygame.Color("white"),
-                    (i * GRAIN_SIZE, j * GRAIN_SIZE, GRAIN_SIZE * 2, GRAIN_SIZE * 2),
-                )
+            else:
+                saved_path = set()
+                for i, j in path:
+                    if self.grid[i, j, 1] <= 0:
+                        saved_path.add((i, j))
+            if path:
 
+                path_list = list(path)
+
+                for i in range(len(path_list)):
+
+                    pygame.draw.circle(
+                        self.screen,
+                        (255, 255, 255),
+                        (
+                            path_list[i][1] * GRAIN_SIZE,
+                            path_list[i][0] * GRAIN_SIZE,
+                        ),
+                        1,
+                    )
             last_path = path
-            self.chunks[:, :] = 5
+
+        # pygame.display.flip()
 
     def clear(self):
 
+        if self.clear_puase == 1:
+            return
+        if self.clear_puase > 0:
+            self.clear_puase -= 1
         # find all colours that have a grain in each coloumn
         possible_colours = [
             colour
             for colour in range(1, len(colours))
             if all(colour in self.grid[:, i, 0] for i in range(COLS))
         ]
+
+        if not np.all(self.chunks == 0):
+            self.clear_puase = 2
 
         # for each colour check if there is a possible path
         _possible_colours = []
