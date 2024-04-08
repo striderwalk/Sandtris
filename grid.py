@@ -262,11 +262,12 @@ class Grid:
                             path = pathfinder.path_to((i, COLS - 1)).tolist()
 
                             if len(path) > 1:
-                                print(path)
+
                                 self.clearing = True
                                 self.path = set(tuple(i) for i in path)
                                 self.clear_colour = colour
                                 self.chunks[:, :] = 1
+                                return
 
     def next_clear(self):
         next_path = set(self.path)
