@@ -127,9 +127,9 @@ class Grid:
 
                 # pick the direction to iterate
                 i_range = (
-                    range(start_i, end_i)
+                    range(end_i - 1, start_i - 1, -1)
                     if random.random() < 0.5
-                    else range(end_i - 1, start_i - 1, -1)
+                    else range(start_i, end_i)
                 )
 
                 j_range = (
@@ -238,34 +238,51 @@ class Grid:
     def update(self, win):
         if not self.clearing:
             self.update_grid()
+            self.clear()
         else:
             self.next_clear()
 
         self.draw(win)
-        self.clear()
+
         # self.draw_chunks(win)
 
     def clear(self):
+        # Get all the possible colours
         possible_colours = [
             colour
             for colour in range(1, len(colours))
             if all(colour in self.grid[:, i, 0] for i in range(COLS))
         ]
+
+        # For each possible colour
         for colour in possible_colours:
 
             # Setup the graph for the given colour
             graph = tcod.path.SimpleGraph(
                 cost=np.where(self.grid != colour, 0, self.grid)[:, :, 0],
                 cardinal=2,
-                diagonal=3,
+                diagonal=0,
             )
             pathfinder = tcod.path.Pathfinder(graph)
+
             for i in range(ROWS):
 
                 if self.grid[i, 0, 0] == colour:
-
+                    if i != 0 and i != ROWS - 1:
+                        if (
+                            self.grid[i, 0, 0] == self.grid[i - 1, 0, 0]
+                            and self.grid[i, 0, 0] == self.grid[i + 1, 0, 0]
+                        ):
+                            continue
                     pathfinder.add_root((i, 0))
                     for i in range(ROWS):
+                        if i != 0 and i != ROWS - 1:
+                            if (
+                                self.grid[i, -1, 0] == self.grid[i - 1, -1, 0]
+                                and self.grid[i, -1, 0] == self.grid[i + 1, -1, 0]
+                            ):
+                                continue
+
                         if self.grid[i, COLS - 1, 0] == colour:
 
                             path = pathfinder.path_to((i, COLS - 1)).tolist()
@@ -274,6 +291,8 @@ class Grid:
 
                                 self.clearing = True
                                 self.path = set(tuple(i) for i in path)
+                                self.new_path = self.path
+
                                 self.clear_colour = colour
                                 self.chunks[:, :] = 1
                                 return

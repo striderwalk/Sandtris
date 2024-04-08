@@ -20,26 +20,31 @@ def main():
     tetris_screen = pygame.surface.Surface((GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT))
     pressing_down = False
     count = 0
+
+    # main game loop -------------------------------->
     while run:
         count += 1
 
-        # update gane aspects
+        # Update the game
         tetris.update(tetris_screen)
         if pressing_down or count % 3 == 0:
             tetris.go_down()
+        win.blit(tetris_screen, (18, 18))
 
-        # draw game
-        win.blit(tetris_screen, (10, 10))
-
-        # handle pygame events
+        # handle pygame events -------------------------------->
         for event in pygame.event.get():
+            # game exiting
             if event.type == pygame.QUIT:
                 pygame.quit()
                 return
+
             if event.type == pygame.KEYDOWN:
+                # game exiting
                 if event.key == pygame.K_ESCAPE:
                     pygame.quit()
                     return
+
+                # game inputs
 
                 if event.key == pygame.K_SPACE:
                     tetris.press_space()
@@ -47,11 +52,14 @@ def main():
                     pressing_down = True
                 if event.key == pygame.K_UP:
                     tetris.rotate()
+
+                # debug tool
                 if event.key == pygame.K_o:
                     tetris.new_piece()
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_DOWN:
+
                     pressing_down = False
 
         keys = pygame.key.get_pressed()
