@@ -17,7 +17,6 @@ def main():
     # setup grid
     tetris = Sandtris()
     run = True
-    tetris_screen = pygame.surface.Surface((GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT))
     pressing_down = False
     count = 0
 
@@ -26,10 +25,12 @@ def main():
         count += 1
 
         # Update the game
-        tetris.update(tetris_screen)
+        tetris.update(win)
         if pressing_down or count % 3 == 0:
+
             tetris.go_down()
-        win.blit(tetris_screen, (18, 18))
+        if pressing_down:
+            tetris.score_add(1)
 
         # handle pygame events -------------------------------->
         for event in pygame.event.get():
@@ -73,7 +74,6 @@ def main():
         pygame.display.flip()
         pygame.display.set_caption(f"FPS: {clock.get_fps()}")
         win.fill(pygame.Color("gray"))
-        tetris_screen.fill(pygame.Color("black"))
 
         clock.tick(FPS)
 

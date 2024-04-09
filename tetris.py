@@ -3,6 +3,7 @@ import random
 
 from consts import (
     COLS,
+    GAME_SCREEN_HEIGHT,
     GAME_SCREEN_WIDTH,
     GRAIN_SIZE,
     PIECE_SIZE,
@@ -11,6 +12,8 @@ from consts import (
 from grid import Grid
 
 colours = ["white", "red", "green", "blue", "yellow"]
+pygame.font.init()
+font = pygame.sysfont.SysFont("jetbrainsmononerdfontcomplete", 20)
 
 
 class Piece:
@@ -55,6 +58,21 @@ class Piece:
     def rotate(self):
         self.rotation = (self.rotation + 1) % len(self.pieces[self.type])
 
+    def draw(self, win):
+        # Draw the current piece
+        for i, j in self.image:
+
+            pygame.draw.rect(
+                win,
+                colours[self.color],
+                [
+                    GRAIN_SIZE * (10 * j + self.x) + 0.5,
+                    GRAIN_SIZE * (10 * i + self.y) + 0.5,
+                    PIECE_SIZE - 1,
+                    PIECE_SIZE - 1,
+                ],
+            )
+
 
 class Sandtris:
     def __init__(self):
@@ -64,8 +82,8 @@ class Sandtris:
         self.score = 0
 
     def new_piece(self):
-        # self.piece = Piece(int(GAME_SCREEN_WIDTH / 2), 0)
-        self.piece = Piece(10, 0)
+
+        self.piece = Piece(13, 0)
 
     def intersects(self):
         for i, j in self.piece.full_image():
@@ -75,10 +93,13 @@ class Sandtris:
                 return True
 
     def press_space(self):
+        score = 0
         while not self.intersects():
+            score += 1
             self.piece.y += 1
         self.piece.y -= 1
         self.freeze()
+        self.score_add(score)
 
     def go_down(self):
         self.piece.y += 1
@@ -121,25 +142,27 @@ class Sandtris:
 
                 break
 
+    def score_add(self, score):
+        self.score += score
+
     def draw(self, win):
-        if self.piece is not None:
-
-            for i, j in self.piece.image:
-
-                pygame.draw.rect(
-                    win,
-                    colours[self.piece.color],
-                    [
-                        GRAIN_SIZE * (10 * j + self.piece.x) + 0.5,
-                        GRAIN_SIZE * (10 * i + self.piece.y) + 0.5,
-                        PIECE_SIZE - 1,
-                        PIECE_SIZE - 1,
-                    ],
-                )
+        # Draw the score
+        text = font.render(f"Score {self.score}", True, pygame.Color("black"))
+        win.blit(text, (400, 30))
 
     def update(self, win):
         if self.piece == None:
             self.new_piece()
 
-        self.grid.update(win)
+        screen = pygame.Surface((GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT))
+        # update the sand simulation
+        points = self.grid.update(screen)
+        if points:
+            # added any new points
+            self.score_add(points)
+        # draw the current piece
+        if self.piece:
+            self.piece.draw(screen)
+        win.blit(screen, (18, 18))
+
         self.draw(win)

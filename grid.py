@@ -238,13 +238,13 @@ class Grid:
     def update(self, win):
         if not self.clearing:
             self.update_grid()
-            self.clear()
+            score = self.clear()
         else:
-            self.next_clear()
+            score = self.next_clear()
 
         self.draw(win)
 
-        # self.draw_chunks(win)
+        return score
 
     def clear(self):
         # Get all the possible colours
@@ -295,7 +295,7 @@ class Grid:
 
                                 self.clear_colour = colour
                                 self.chunks[:, :] = 1
-                                return
+                                return len(path) * POINTS_PER_GRAIN
 
     def next_clear(self):
         self.new_path = set()
@@ -323,5 +323,7 @@ class Grid:
 
         if self.path == next_path:
             self.clearing = False
-            return
+            return 0
         self.path = next_path
+
+        return len(next_path) * POINTS_PER_GRAIN
