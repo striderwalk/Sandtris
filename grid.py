@@ -1,12 +1,12 @@
 from copy import deepcopy
 import math
-from queue import Queue
+
 import random
 
 import numpy as np
 import pygame
 import tcod
-from tqdm import tqdm
+
 
 from consts import *
 
@@ -18,6 +18,8 @@ class Grid:
 
         # Store the sand
         self.grid = np.zeros((ROWS, COLS, 2), np.int16)
+
+        self.surface_array = np.zeros((COLS, ROWS, 3), np.int16)
 
         # Chunks used to optimize sand updates
         chucks_width = int(np.ceil(COLS / CHUNK_SIZE))
@@ -48,6 +50,10 @@ class Grid:
                     self.chunks[i, j] = 5
 
     def draw(self, win):
+        colours_dict = {
+            i: np.array([pygame.Color(j).r, pygame.Color(j).g, pygame.Color(j).b])
+            for i, j in enumerate(colours)
+        }
 
         for i_chunk in range(len(self.chunks)):
             for j_chunk in range(len(self.chunks[i_chunk])):
@@ -56,21 +62,24 @@ class Grid:
 
                 for i in range(i_chunk * CHUNK_SIZE, (i_chunk + 1) * CHUNK_SIZE):
                     for j in range(j_chunk * CHUNK_SIZE, (j_chunk + 1) * CHUNK_SIZE):
-                        colour = colours[self.grid[j, i, 0]]
-                        pygame.draw.rect(
-                            self.screen,
-                            pygame.Color(colour),
-                            (i * GRAIN_SIZE, j * GRAIN_SIZE, GRAIN_SIZE, GRAIN_SIZE),
-                        )
+                        self.surface_array[i, j, :] = colours_dict[self.grid[j, i, 0]]
+
         if self.clearing:
-
+            colour = np.array([255, 255, 255])
             for j, i in self.new_path:
-                pygame.draw.rect(
-                    self.screen,
-                    pygame.Color("white"),
-                    (i * GRAIN_SIZE, j * GRAIN_SIZE, GRAIN_SIZE, GRAIN_SIZE),
-                )
+                self.surface_array[i, j, :] = colour
 
+        surface = pygame.Surface((COLS, ROWS))
+        pygame.surfarray.blit_array(surface, self.surface_array)
+        surface = pygame.transform.scale(
+            surface,
+            (
+                COLS * GRAIN_SIZE,
+                ROWS * GRAIN_SIZE,
+            ),
+        )
+
+        self.screen.blit(surface, (0, 0))
         win.blit(self.screen, (0, 0))
 
     def draw_chunks(self, win):
@@ -243,7 +252,7 @@ class Grid:
             score = self.next_clear()
 
         self.draw(win)
-
+        self.draw_chunks(win)
         return score
 
     def clear(self):

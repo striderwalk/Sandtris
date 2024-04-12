@@ -2,10 +2,8 @@
 import cProfile
 import os
 import pstats
-from tqdm import tqdm
 
 from main import main
-
 
 print("timeing started please DON'T press anything")
 with cProfile.Profile() as pr:

@@ -1,9 +1,6 @@
-import random
-import numpy as np
 import pygame
 
 from consts import *
-from grid import Grid
 from tetris import Sandtris
 
 
