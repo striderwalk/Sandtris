@@ -226,16 +226,12 @@ class Grid:
                         self.chunks[i, j] = -1
 
     def piece_touching(self, i, j):
-
-        ratio = 1
-        y = int(j * ratio)
-        x = int(i * ratio)
-
-        return not np.all(self.grid[x : x + ratio, y : y + ratio] == 0)
+        return not self.grid[i, j, 0] == 0
 
     def place(self, image, colour):
         self.clear_puase = 0
         for i, j in image:
+            self.chunks[int(j / CHUNK_SIZE), int(i / CHUNK_SIZE)] = 5
             self.chunks[
                 math.floor((j / CHUNK_SIZE) - 1) : math.ceil((j / CHUNK_SIZE) + 1),
                 math.floor((i / CHUNK_SIZE) - 1) : math.ceil((i / CHUNK_SIZE) + 1),
@@ -252,7 +248,6 @@ class Grid:
             score = self.next_clear()
 
         self.draw(win)
-        self.draw_chunks(win)
         return score
 
     def clear(self):
