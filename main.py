@@ -49,7 +49,9 @@ def main_game_loop(win, clock):
 def lost_loop(win, clock, score, screen):
     # render the text -------------------------------->
     lost_text = large_font.render("You have lost!", True, (21, 54, 66))
-    score_text = small_font.render(f" You scored {score} points", True, (21, 54, 66))
+    score_text = small_font.render(
+        f" You scored {int(score)} points", True, (21, 54, 66)
+    )
 
     # draw the background
     text_surface = pygame.Surface(
