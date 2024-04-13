@@ -10,11 +10,12 @@ from consts import (
     PIECE_SIZE,
     ROWS,
 )
+from font_util import get_font
 from grid import Grid
 
 colours = ["white", "red", "green", "blue", "yellow"]
-pygame.font.init()
-font = pygame.sysfont.SysFont("jetbrainsmononerdfontcomplete", 20)
+
+font = get_font(20)
 
 
 class Piece:
@@ -81,10 +82,15 @@ class Sandtris:
 
         self.piece = None
         self.score = 0
+        self.count = 0
+        self.pressing_down = False
+        self.lost = False
 
     def new_piece(self):
 
         self.piece = Piece(13, 0)
+        if self.intersects():
+            self.lost = True
 
     def intersects(self):
         for i, j in self.piece.full_image():
@@ -152,18 +158,54 @@ class Sandtris:
         win.blit(text, (400, 30))
 
     def update(self, win):
+        # Get new piece if needed
         if self.piece == None:
             self.new_piece()
 
+        # Move the piece down
+        if self.pressing_down or self.count % 3 == 0:
+            self.go_down()
+
+        # Add to the score is the down key is pressed
+        if self.pressing_down:
+            self.score_add(1)
+
+        # Move to the side
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            self.go_side(-2)
+        if keys[pygame.K_RIGHT]:
+            self.go_side(2)
+
         screen = pygame.Surface((GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT))
         # update the sand simulation
-        points = self.grid.update(screen)
-        if points:
+        new_points = self.grid.update(screen)
+        if new_points:
             # added any new points
-            self.score_add(points)
+            self.score_add(new_points)
+
         # draw the current piece
         if self.piece:
             self.piece.draw(screen)
         win.blit(screen, (18, 18))
 
+        # Draw the ui
         self.draw(win)
+
+    def handle_event(self, event):
+        if self.piece == None:
+            return
+
+        if event.type == pygame.KEYDOWN:
+
+            if event.key == pygame.K_SPACE:
+                self.press_space()
+            if event.key == pygame.K_DOWN:
+                self.pressing_down = True
+            if event.key == pygame.K_UP:
+                self.rotate()
+
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_DOWN:
+
+                self.pressing_down = False
