@@ -9,11 +9,11 @@ from consts import (
     GRAIN_SIZE,
     PIECE_SIZE,
     ROWS,
+    COLOURS,
 )
 from font_util import get_font
 from grid import Grid
 
-colours = ["white", "red", "green", "blue", "yellow"]
 
 font = get_font(20)
 
@@ -36,7 +36,7 @@ class Piece:
         self.x = x
         self.y = y
         self.type = random.randint(0, 6)
-        self.color = random.randint(1, len(colours) - 1)
+        self.color = random.randint(1, len(COLOURS) - 1)
         self.rotation = 0
 
     def full_image(self):
@@ -66,7 +66,7 @@ class Piece:
 
             pygame.draw.rect(
                 win,
-                colours[self.color],
+                COLOURS[self.color],
                 [
                     GRAIN_SIZE * (10 * j + self.x) + 0.5,
                     GRAIN_SIZE * (10 * i + self.y) + 0.5,

@@ -10,8 +10,6 @@ import tcod
 
 from consts import *
 
-colours = np.array(["black", "red", "green", "blue", "yellow"])
-
 
 class Grid:
     def __init__(self):
@@ -52,7 +50,7 @@ class Grid:
     def draw(self, win):
         colours_dict = {
             i: np.array([pygame.Color(j).r, pygame.Color(j).g, pygame.Color(j).b])
-            for i, j in enumerate(colours)
+            for i, j in enumerate(COLOURS)
         }
 
         for i_chunk in range(len(self.chunks)):
@@ -254,7 +252,7 @@ class Grid:
         # Get all the possible colours
         possible_colours = [
             colour
-            for colour in range(1, len(colours))
+            for colour in range(1, len(COLOURS))
             if all(colour in self.grid[:, i, 0] for i in range(COLS))
         ]
 
