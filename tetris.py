@@ -148,7 +148,7 @@ class Sandtris:
 
     def draw(self, win):
         # Draw the score
-        text = font.render(f"Score {self.score}", True, pygame.Color("black"))
+        text = font.render(f"Score {int(self.score)}", True, pygame.Color("black"))
         win.blit(text, (400, 30))
 
     def update(self, win):
