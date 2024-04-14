@@ -263,7 +263,7 @@ class Grid:
             graph = tcod.path.SimpleGraph(
                 cost=np.where(self.grid != colour, 0, self.grid)[:, :, 0],
                 cardinal=2,
-                diagonal=0,
+                diagonal=3,
             )
             pathfinder = tcod.path.Pathfinder(graph)
 
@@ -304,9 +304,14 @@ class Grid:
         next_path = set(self.path)
 
         for i, j in self.path:
+            # Cardinals
             if j + 1 < COLS and self.grid[i, j + 1, 0] == self.clear_colour:
                 self.new_path.add((i, j + 1))
                 next_path.add((i, j + 1))
+
+            if j - 1 >= 0 and self.grid[i, j - 1, 0] == self.clear_colour:
+                self.new_path.add((i, j - 1))
+                next_path.add((i, j - 1))
 
             if i + 1 < ROWS and self.grid[i + 1, j, 0] == self.clear_colour:
                 self.new_path.add((i + 1, j))
@@ -316,9 +321,38 @@ class Grid:
                 self.new_path.add((i - 1, j))
                 next_path.add((i - 1, j))
 
-            if j - 1 >= 0 and self.grid[i, j - 1, 0] == self.clear_colour:
+            # Diagonals
+            if (
+                j + 1 < COLS
+                and i + 1 < ROWS
+                and self.grid[i + 1, j + 1, 0] == self.clear_colour
+            ):
+                self.new_path.add((i + 1, j + 1))
+                next_path.add((i + 1, j + 1))
+
+            if (
+                j + 1 < COLS
+                and i - 1 >= 0
+                and self.grid[i - 1, j + 1, 0] == self.clear_colour
+            ):
+                self.new_path.add((i - 1, j + 1))
+                next_path.add((i - 1, j + 1))
+
+            if (
+                j - 1 >= 0
+                and i + 1 < ROWS
+                and self.grid[i + 1, j - 1, 0] == self.clear_colour
+            ):
                 self.new_path.add((i, j - 1))
-                next_path.add((i, j - 1))
+                next_path.add((i + 1, j - 1))
+
+            if (
+                j - 1 >= 0
+                and i - 1 >= 0
+                and self.grid[i - 1, j - 1, 0] == self.clear_colour
+            ):
+                self.new_path.add((i - 1, j - 1))
+                next_path.add((i - 1, j - 1))
 
         for i, j in self.path:
             self.grid[i, j, :] = 0
