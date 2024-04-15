@@ -80,7 +80,8 @@ class Sandtris:
     def __init__(self):
         self.grid = Grid()
 
-        self.piece = None
+        self.piece = Piece(13, 0)
+        self.next_piece = Piece(13, 0)
         self.score = 0
         self.count = 0
         self.pressing_down = False
@@ -88,7 +89,8 @@ class Sandtris:
 
     def new_piece(self):
 
-        self.piece = Piece(13, 0)
+        self.piece = self.next_piece
+        self.next_piece = Piece(13, 0)
         if self.intersects():
             self.lost = True
 
@@ -156,6 +158,23 @@ class Sandtris:
         # Draw the score
         text = font.render(f"Score {int(self.score)}", True, pygame.Color("black"))
         win.blit(text, (400, 30))
+
+        # Draw the next piece
+        surface = pygame.Surface((200, 150))
+        surface.fill((215, 215, 215))
+        for i, j in self.next_piece.image:
+
+            pygame.draw.rect(
+                surface,
+                COLOURS[self.next_piece.color],
+                [
+                    GRAIN_SIZE * (10 * j + self.next_piece.x) + 10.5,
+                    GRAIN_SIZE * (10 * i + self.next_piece.y) + 10.5,
+                    PIECE_SIZE - 1,
+                    PIECE_SIZE - 1,
+                ],
+            )
+        win.blit(surface, ((400, 60)))
 
     def update(self, win):
         # Get new piece if needed
