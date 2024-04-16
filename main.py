@@ -3,6 +3,7 @@ import pygame
 from consts import *
 from font_util import get_font
 from menu_button import Button
+from scorebored import draw_scoreboard
 from tetris import Sandtris
 
 large_font = get_font(38)
@@ -11,7 +12,6 @@ small_font = get_font(20)
 
 def main_game_loop(win, clock):
     tetris = Sandtris()
-
     # main game loop -------------------------------->
     while True:
 
@@ -125,7 +125,7 @@ def lost_loop(win, clock, score, screen):
         (HEIGHT + text_surface.get_height()) / 2 + 20,
         160,
         50,
-        "Play again?",
+        "Play again",
     )
     # Lost loop -------------------------------->
     while True:
@@ -155,6 +155,63 @@ def lost_loop(win, clock, score, screen):
         clock.tick(FPS)
 
 
+def menu_loop(win, clock):
+
+    # set the background colour
+    win.fill((235, 235, 235))
+
+    # load the fonts
+    large_font = get_font(40)
+    small_font = get_font(20)
+
+    title_text = large_font.render("Sandtris!", True, ((21, 54, 66)))
+    win.blit(title_text, ((WIDTH - title_text.get_width()) / 2, 50))
+    draw_scoreboard(win)
+
+    exit = Button(
+        (WIDTH) / 2 + 40,
+        600,
+        160,
+        50,
+        "Exit",
+    )
+    play = Button(
+        (WIDTH) / 2 - 40 - 160,
+        600,
+        160,
+        50,
+        "Play",
+    )
+    # main loop -------------------------------->
+    while True:
+        exit.draw(win)
+        if exit.check_click():
+            return {"code": "quit"}
+
+        play.draw(win)
+        if play.check_click():
+            return {"code": "again"}
+
+        pygame.display.flip()
+        # Handle pygame events -------------------------------->
+        for event in pygame.event.get():
+            # Game exiting
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+
+            if event.type == pygame.KEYDOWN:
+                # Game exiting
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    return
+
+            pygame.display.flip()
+            pygame.display.set_caption(f"FPS: {clock.get_fps()}")
+
+            clock.tick(FPS)
+
+
 def main():
 
     # setup pygame
@@ -162,11 +219,16 @@ def main():
     win = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
 
+    exit_data = menu_loop(win, clock)
+    if exit_data["code"] == "quit":
+        pygame.quit()
+        return
     while True:
         # Run the main game loop
         exit_data = main_game_loop(win, clock)
 
         if exit_data["code"] == "quit":
+            pygame.quit()
             return
 
         # Run the lost game loop
@@ -175,6 +237,7 @@ def main():
         exit_data = lost_loop(win, clock, score, game_screen)
 
         if exit_data["code"] == "quit":
+            pygame.quit()
             return
 
 

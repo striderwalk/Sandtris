@@ -191,9 +191,9 @@ class Sandtris:
 
         # Move to the side
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT]:
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             self.go_side(-2)
-        if keys[pygame.K_RIGHT]:
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             self.go_side(2)
 
         screen = pygame.Surface((GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT))
@@ -219,12 +219,12 @@ class Sandtris:
 
             if event.key == pygame.K_SPACE:
                 self.press_space()
-            if event.key == pygame.K_DOWN:
+            if event.key in [pygame.K_DOWN, pygame.K_s]:
                 self.pressing_down = True
-            if event.key == pygame.K_UP:
+            if event.key in [pygame.K_UP, pygame.K_w]:
                 self.rotate()
 
         if event.type == pygame.KEYUP:
-            if event.key == pygame.K_DOWN:
+            if event.key in  [pygame.K_DOWN, pygame.K_s]:
 
                 self.pressing_down = False
