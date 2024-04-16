@@ -176,11 +176,27 @@ class Grid:
                 next_grid[i, j] = 0
                 self.grid[i, j] = 0
 
+                # move all cell above down too
+                for new_i in range(i - 1, -1, -1):
+                    if self.grid[new_i, j, 0] == 0:
+                        self.chunks[
+                            int(new_i / CHUNK_SIZE) - 2 : int(i / CHUNK_SIZE) + 1,
+                            int(j / CHUNK_SIZE),
+                        ] = 5
+                        break
+
+                    next_grid[new_i + 1, j, 0] = self.grid[new_i, j, 0]
+                    next_grid[new_i + 1, j, 1] = self.grid[new_i, j, 1] - 1
+
+                    next_grid[new_i, j] = 0
+                    self.grid[new_i, j] = 0
+
                 return True
 
         # check if lifetime is over
         if self.grid[i, j, 1] <= 0:
             return False
+
         # move left or right randomly
         if j + direction < COLS and j + direction >= 0:
             if (
@@ -246,6 +262,7 @@ class Grid:
             score = self.next_clear()
 
         self.draw(win)
+        self.draw_chunks(win)
         return score
 
     def clear(self):
