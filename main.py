@@ -160,10 +160,6 @@ def menu_loop(win, clock):
     # set the background colour
     win.fill((235, 235, 235))
 
-    # load the fonts
-    large_font = get_font(40)
-    small_font = get_font(20)
-
     title_text = large_font.render("Sandtris!", True, ((21, 54, 66)))
     win.blit(title_text, ((WIDTH - title_text.get_width()) / 2, 50))
     draw_scoreboard(win)

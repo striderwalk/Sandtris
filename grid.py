@@ -1,31 +1,32 @@
-from copy import deepcopy
 import math
-
 import random
+from copy import deepcopy
 
 import numpy as np
 import pygame
 import tcod
 
-
 from consts import *
+
+colours_dict = {
+    i: np.array([pygame.Color(j).r, pygame.Color(j).g, pygame.Color(j).b])
+    for i, j in enumerate(COLOURS)
+}
 
 
 class Grid:
     def __init__(self):
 
         # Store the sand
-        self.grid = np.zeros((ROWS, COLS, 2), np.int16)
+        self.grid = np.zeros((ROWS, COLS, 2), np.int8)
 
-        self.surface_array = np.zeros((COLS, ROWS, 3), np.int16)
+        self.surface_array = np.zeros((COLS, ROWS, 3), np.int8)
 
         # Chunks used to optimize sand updates
         chucks_width = int(np.ceil(COLS / CHUNK_SIZE))
         chucks_height = int(np.ceil(ROWS / CHUNK_SIZE))
 
-        self.chunks = np.array(
-            ([[2 for _ in range(chucks_height)] for _ in range(chucks_width)])
-        )
+        self.chunks = np.ones((chucks_width, chucks_height), np.int8)
 
         # Surface to draw sand to
         self.screen = pygame.Surface((GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT))
@@ -48,24 +49,6 @@ class Grid:
                     self.chunks[i, j] = 5
 
     def draw(self, win):
-        colours_dict = {
-            i: np.array([pygame.Color(j).r, pygame.Color(j).g, pygame.Color(j).b])
-            for i, j in enumerate(COLOURS)
-        }
-
-        for i_chunk in range(len(self.chunks)):
-            for j_chunk in range(len(self.chunks[i_chunk])):
-                if self.chunks[i_chunk, j_chunk] == 0:
-                    continue
-
-                for i in range(i_chunk * CHUNK_SIZE, (i_chunk + 1) * CHUNK_SIZE):
-                    for j in range(j_chunk * CHUNK_SIZE, (j_chunk + 1) * CHUNK_SIZE):
-                        self.surface_array[i, j, :] = colours_dict[self.grid[j, i, 0]]
-
-        if self.clearing:
-            colour = np.array([255, 255, 255])
-            for j, i in self.new_path:
-                self.surface_array[i, j, :] = colour
 
         surface = pygame.Surface((COLS, ROWS))
         pygame.surfarray.blit_array(surface, self.surface_array)
@@ -77,8 +60,16 @@ class Grid:
             ),
         )
 
-        self.screen.blit(surface, (0, 0))
-        win.blit(self.screen, (0, 0))
+        win.blit(surface, (0, 0))
+
+        if self.clearing:
+
+            for j, i in self.new_path:
+                pygame.draw.rect(
+                    win,
+                    (255, 255, 255),
+                    (i * GRAIN_SIZE, j * GRAIN_SIZE, GRAIN_SIZE, GRAIN_SIZE),
+                )
 
     def draw_chunks(self, win):
         my_font = pygame.font.SysFont("Helvetica", 30)
@@ -159,6 +150,23 @@ class Grid:
 
         self.grid = next_grid
 
+    def clear_grain(self, i, j):
+        self.grid[i, j] = 0
+        self.surface_array[j, i, :] = colours_dict[self.grid[i, j, 0]]
+
+    def swap_grain(self, i, j, new_i, new_j, next_grid):
+        # swap to the next position
+        next_grid[new_i, new_j, 0] = self.grid[i, j, 0]
+        next_grid[new_i, new_j, 1] = self.grid[i, j, 1] - 1
+
+        # reset the current position
+        next_grid[i, j] = 0
+        self.grid[i, j] = 0
+
+        # draw the new position
+        self.surface_array[j, i, :] = colours_dict[0]
+        self.surface_array[new_j, new_i, :] = colours_dict[next_grid[new_i, new_j, 0]]
+
     def update_item(self, i, j, next_grid):
 
         # check if empty
@@ -170,26 +178,22 @@ class Grid:
         if i < ROWS - 1:
 
             if self.grid[i + 1, j][0] == 0 and next_grid[i + 1, j][0] == 0:
-                next_grid[i + 1, j, 0] = self.grid[i, j, 0]
-                next_grid[i + 1, j, 1] = self.grid[i, j, 1] - 1
 
-                next_grid[i, j] = 0
-                self.grid[i, j] = 0
+                # swap the grain to its new position
+                self.swap_grain(i, j, i + 1, j, next_grid)
 
                 # move all cell above down too
                 for new_i in range(i - 1, -1, -1):
+
                     if self.grid[new_i, j, 0] == 0:
-                        self.chunks[
-                            int(new_i / CHUNK_SIZE) - 2 : int(i / CHUNK_SIZE) + 1,
-                            int(j / CHUNK_SIZE),
-                        ] = 5
                         break
 
-                    next_grid[new_i + 1, j, 0] = self.grid[new_i, j, 0]
-                    next_grid[new_i + 1, j, 1] = self.grid[new_i, j, 1] - 1
+                    self.swap_grain(new_i, j, new_i + 1, j, next_grid)
 
-                    next_grid[new_i, j] = 0
-                    self.grid[new_i, j] = 0
+                self.chunks[
+                    int(j / CHUNK_SIZE) - 1 : int(j / CHUNK_SIZE) + 2,
+                    int(new_i / CHUNK_SIZE) - 1 : int(i / CHUNK_SIZE) + 1,
+                ] = 5
 
                 return True
 
@@ -203,11 +207,8 @@ class Grid:
                 self.grid[i, j + direction][0] == 0
                 and next_grid[i, j + direction][0] == 0
             ):
-                next_grid[i, j + direction, 0] = self.grid[i, j, 0]
-                next_grid[i, j + direction, 1] = self.grid[i, j, 1] - 1
 
-                next_grid[i, j] = 0
-                self.grid[i, j] = 0
+                self.swap_grain(i, j, i, j + direction, next_grid)
 
                 return True
 
@@ -216,10 +217,7 @@ class Grid:
                 self.grid[i, j - direction][0] == 0
                 and next_grid[i, j - direction][0] == 0
             ):
-                next_grid[i, j - direction, 0] = self.grid[i, j, 0]
-                next_grid[i, j - direction, 1] = self.grid[i, j, 1] - 1
-                next_grid[i, j] = 0
-                self.grid[i, j] = 0
+                self.swap_grain(i, j, i, j - direction, next_grid)
 
                 return True
 
@@ -254,7 +252,10 @@ class Grid:
             self.grid[i : i + 10, j : j + 10, 0] = colour
             self.grid[i : i + 10, j : j + 10, 1] = 50
 
+            self.surface_array[j : j + 10, i : i + 10, :] = colours_dict[colour]
+
     def update(self, win):
+
         if not self.clearing:
             self.update_grid()
             score = self.clear()
@@ -262,7 +263,7 @@ class Grid:
             score = self.next_clear()
 
         self.draw(win)
-        self.draw_chunks(win)
+        # self.draw_chunks(win)
         return score
 
     def clear(self):
@@ -372,7 +373,7 @@ class Grid:
                 next_path.add((i - 1, j - 1))
 
         for i, j in self.path:
-            self.grid[i, j, :] = 0
+            self.clear_grain(i, j)
 
         if self.path == next_path:
             self.clearing = False
