@@ -183,6 +183,8 @@ class Grid:
                 self.swap_grain(i, j, i + 1, j, next_grid)
 
                 # move all cell above down too
+                if i == 0:
+                    return True
                 for new_i in range(i - 1, -1, -1):
 
                     if self.grid[new_i, j, 0] == 0:

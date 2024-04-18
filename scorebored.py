@@ -17,7 +17,9 @@ def load_scoreboard():
     return sorted(scoreboard, key=lambda x: x[1], reverse=True)
 
 
-def write_scoreboard(name, score):
+def write_score(name: str, score: int):
+    if not name:
+        raise ValueError("Name must not be empty")
     # load the scorebored
     with open("scorebored.csv", "a", newline="") as file:
         # write the name and score to the file
@@ -25,7 +27,7 @@ def write_scoreboard(name, score):
         writer.writerow([name, score])
 
 
-def draw_scoreboard(win):
+def draw_scoreboard(win: pygame.Surface, y_offset: int = 0):
 
     scoreboard = load_scoreboard()
     large_font = get_font(40)
@@ -41,7 +43,16 @@ def draw_scoreboard(win):
 
     for index in range(min(12, len(scoreboard))):
         name, score = scoreboard[index]
-        text = small_font.render(f"{name}: {score:>15}", True, (0, 0, 0))
-        surf.blit(text, (10, scoreboard_text.get_height() + 20 + 35 * (index)))
+        name = small_font.render(f"{name}:", True, (0, 0, 0))
+        surf.blit(name, (10, scoreboard_text.get_height() + 20 + 35 * (index)))
 
-    win.blit(surf, ((WIDTH - 300) / 2, 140))
+        score = small_font.render(str(score).zfill(5), True, (0, 0, 0))
+        surf.blit(
+            score,
+            (
+                surf.get_width() - score.get_width() - 20,
+                scoreboard_text.get_height() + 20 + 35 * (index),
+            ),
+        )
+
+    win.blit(surf, ((WIDTH - 300) / 2, 140 + y_offset))
