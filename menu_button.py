@@ -22,7 +22,7 @@ class Button:
         text,
         func=None,
         rect_colour=(21, 54, 66),
-        text_colour=(235, 235, 235),
+        text_colour=(245, 245, 245),
         file=False,
     ):
         self.rect = pygame.Rect(x, y, xsize, ysize)

@@ -83,22 +83,22 @@ def lost_loop(win, clock, score, screen):
             text_surface.get_width() + 8,
             text_surface.get_height() + 80,
         ),
-        border_radius=5,
+        border_radius=2,
     )
+    # pygame.draw.rect(
+    #     text_surface,
+    #     (21, 54, 66),
+    #     (
+    #         2,
+    #         2,
+    #         lost_text.get_width() + 7,
+    #         lost_text.get_height() + score_text.get_height() + 7,
+    #     ),
+    #     border_radius=5,
+    # )
     pygame.draw.rect(
         text_surface,
-        (21, 54, 66),
-        (
-            2,
-            2,
-            lost_text.get_width() + 7,
-            lost_text.get_height() + score_text.get_height() + 7,
-        ),
-        border_radius=5,
-    )
-    pygame.draw.rect(
-        text_surface,
-        (235, 235, 235),
+        (245, 245, 245),
         (
             5,
             5,
@@ -305,6 +305,39 @@ def add_scoreboard_loop(win, clock, score):
         win.fill((235, 235, 235))
 
 
+def loading_loop(win, clock):
+    # set the background colour
+    win.fill((235, 235, 235))
+
+    title_text = large_font.render("Loading", True, ((21, 54, 66)))
+    win.blit(title_text, ((WIDTH - title_text.get_width()) / 2, 50))
+    draw_scoreboard(win)
+
+    # main loop -------------------------------->
+    for _ in range(500):
+
+        pygame.display.flip()
+        # Handle pygame events -------------------------------->
+        for event in pygame.event.get():
+            # Game exiting
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return {"code": "quit"}
+
+            if event.type == pygame.KEYDOWN:
+                # Game exiting
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    return {"code": "quit"}
+
+            pygame.display.flip()
+            pygame.display.set_caption(f"FPS: {clock.get_fps()}")
+
+            clock.tick(FPS)
+
+    return {"code": "again"}
+
+
 def main():
 
     # setup pygame
@@ -312,14 +345,26 @@ def main():
     win = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
 
+    # Start menu
     exit_data = menu_loop(win, clock)
     if exit_data["code"] == "quit":
         pygame.quit()
         return
     while True:
+        # loading screen
+        exit_data = loading_loop(win, clock)
+        if exit_data["code"] == "quit":
+            pygame.quit()
+            return
+
         # Run the main game loop
         exit_data = main_game_loop(win, clock)
+        if exit_data["code"] == "quit":
+            pygame.quit()
+            return
 
+        # loading screen
+        exit_data = loading_loop(win, clock)
         if exit_data["code"] == "quit":
             pygame.quit()
             return
@@ -333,7 +378,18 @@ def main():
             pygame.quit()
             return
         else:
+            # loading screen
+            exit_data = loading_loop(win, clock)
+            if exit_data["code"] == "quit":
+                pygame.quit()
+                return
             add_scoreboard_loop(win, clock, score)
+
+        # loading screen
+        exit_data = loading_loop(win, clock)
+        if exit_data["code"] == "quit":
+            pygame.quit()
+            return
 
 
 if __name__ == "__main__":
