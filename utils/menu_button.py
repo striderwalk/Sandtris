@@ -1,7 +1,6 @@
 import pygame
 
-
-from font_util import get_font
+from utils import get_font
 
 
 class Button:

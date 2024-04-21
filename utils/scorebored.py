@@ -1,15 +1,15 @@
 import csv
-import random
+
 
 import pygame
 
 from consts import *
-from font_util import get_font
+from utils import get_font
 
 
 def load_scoreboard():
     # load the scoreboard
-    with open("scorebored.csv", "r", newline="") as file:
+    with open("assets/scorebored.csv", "r", newline="") as file:
 
         scoreboard = [(data[0], int(data[1])) for data in csv.reader(file) if data]
 
@@ -21,7 +21,7 @@ def write_score(name: str, score: int):
     if not name:
         raise ValueError("Name must not be empty")
     # load the scorebored
-    with open("scorebored.csv", "a", newline="") as file:
+    with open("assets/scorebored.csv", "a", newline="") as file:
         # write the name and score to the file
         writer = csv.writer(file)
         writer.writerow([name, score])

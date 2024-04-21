@@ -11,7 +11,7 @@ from consts import (
     ROWS,
     COLOURS,
 )
-from font_util import get_font
+from utils.font_util import get_font
 from grid import Grid
 
 
@@ -225,6 +225,6 @@ class Sandtris:
                 self.rotate()
 
         if event.type == pygame.KEYUP:
-            if event.key in  [pygame.K_DOWN, pygame.K_s]:
+            if event.key in [pygame.K_DOWN, pygame.K_s]:
 
                 self.pressing_down = False
