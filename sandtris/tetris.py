@@ -12,7 +12,7 @@ from consts import (
     COLOURS,
 )
 from utils.font_util import get_font
-from grid import Grid
+from sandtris.grid import Grid
 
 
 font = get_font(20)

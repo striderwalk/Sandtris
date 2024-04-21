@@ -1,7 +1,7 @@
 import pygame
 
 from consts import *
-from tetris import Sandtris
+from sandtris.tetris import Sandtris
 from utils import get_font
 
 large_font = get_font(38)
