@@ -1,5 +1,5 @@
 # Main game data
-FPS = 60
+FPS = 0
 WIDTH, HEIGHT = 620, 740
 
 

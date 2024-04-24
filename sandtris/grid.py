@@ -2,6 +2,7 @@ import math
 import random
 from copy import deepcopy
 
+from numba import njit
 import numpy as np
 import pygame
 import tcod
@@ -12,6 +13,55 @@ colours_dict = {
     i: np.array([pygame.Color(j).r, pygame.Color(j).g, pygame.Color(j).b])
     for i, j in enumerate(COLOURS)
 }
+
+
+@njit
+def update_item(grid, i, j, next_grid):
+
+    # check if empty
+    if grid[i, j, 0] == 0:
+        return None
+
+    direction = [-1, 1][random.randint(0, 1)]
+    # move down
+    if i < ROWS - 1:
+
+        if grid[i + 1, j][0] == 0 and next_grid[i + 1, j][0] == 0:
+
+            # swap the grain to its new position
+            swaps = [(i, j, i + 1, j)]
+
+            # move all cell above down too
+            if i == 0:
+                return None
+            for new_i in range(i - 1, -1, -1):
+
+                if grid[new_i, j, 0] == 0:
+                    break
+
+                swaps.append((new_i, j, new_i + 1, j))
+
+            return swaps
+
+    # check if lifetime is over
+    if grid[i, j, 1] <= 0:
+        return None
+
+    # move left or right randomly
+    if j + direction < COLS and j + direction >= 0:
+        if grid[i, j + direction][0] == 0 and next_grid[i, j + direction][0] == 0:
+
+            return [(i, j, i, j + direction)]
+
+    if j - direction < COLS and j - direction >= 0:
+        if grid[i, j - direction][0] == 0 and next_grid[i, j - direction][0] == 0:
+
+            return [(i, j, i, j - direction)]
+
+    next_grid[i, j, 0] = grid[i, j, 0]
+    next_grid[i, j, 1] = grid[i, j, 1] - 1
+
+    return None
 
 
 class Grid:
@@ -140,7 +190,13 @@ class Grid:
 
                 for i in i_range:
                     for j in j_range:
-                        change = (self.update_item(j, i, next_grid)) or change
+                        swaps = update_item(self.grid, j, i, next_grid)
+                        if not swaps:
+                            continue
+
+                        change = True
+                        for swap in swaps:
+                            self.swap_grain(*swap, next_grid)
 
                 if not change and self.chunks[i_chunk, j_chunk] > 0:
                     self.chunks[i_chunk, j_chunk] -= 1
@@ -167,66 +223,9 @@ class Grid:
         self.surface_array[j, i, :] = colours_dict[0]
         self.surface_array[new_j, new_i, :] = colours_dict[next_grid[new_i, new_j, 0]]
 
-    def update_item(self, i, j, next_grid):
+        # upadate the chunk
 
-        # check if empty
-        if self.grid[i, j, 0] == 0:
-            return False
-
-        direction = random.choice([-1, 1])
-        # move down
-        if i < ROWS - 1:
-
-            if self.grid[i + 1, j][0] == 0 and next_grid[i + 1, j][0] == 0:
-
-                # swap the grain to its new position
-                self.swap_grain(i, j, i + 1, j, next_grid)
-
-                # move all cell above down too
-                if i == 0:
-                    return True
-                for new_i in range(i - 1, -1, -1):
-
-                    if self.grid[new_i, j, 0] == 0:
-                        break
-
-                    self.swap_grain(new_i, j, new_i + 1, j, next_grid)
-
-                self.chunks[
-                    int(j / CHUNK_SIZE) - 1 : int(j / CHUNK_SIZE) + 2,
-                    int(new_i / CHUNK_SIZE) - 1 : int(i / CHUNK_SIZE) + 1,
-                ] = 5
-
-                return True
-
-        # check if lifetime is over
-        if self.grid[i, j, 1] <= 0:
-            return False
-
-        # move left or right randomly
-        if j + direction < COLS and j + direction >= 0:
-            if (
-                self.grid[i, j + direction][0] == 0
-                and next_grid[i, j + direction][0] == 0
-            ):
-
-                self.swap_grain(i, j, i, j + direction, next_grid)
-
-                return True
-
-        if j - direction < COLS and j - direction >= 0:
-            if (
-                self.grid[i, j - direction][0] == 0
-                and next_grid[i, j - direction][0] == 0
-            ):
-                self.swap_grain(i, j, i, j - direction, next_grid)
-
-                return True
-
-        next_grid[i, j, 0] = self.grid[i, j, 0]
-        next_grid[i, j, 1] = self.grid[i, j, 1] - 1
-
-        return False
+        self.chunks[int(j / CHUNK_SIZE), int(i / CHUNK_SIZE)] = 5
 
     def check_neighbours(self, i_chunk, j_chunk):
         for i in range(max(0, i_chunk - 1), min(i_chunk + 2, len(self.chunks))):
