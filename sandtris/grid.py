@@ -2,25 +2,26 @@ import math
 import random
 from copy import deepcopy
 
-from numba import njit
 import numpy as np
 import pygame
 import tcod
+from numba import njit, jit
 
 from consts import *
 
-colours_dict = {
-    i: np.array([pygame.Color(j).r, pygame.Color(j).g, pygame.Color(j).b])
-    for i, j in enumerate(COLOURS)
-}
+colours_values = np.array(
+    [
+        np.array([pygame.Color(j).r, pygame.Color(j).g, pygame.Color(j).b])
+        for j in (COLOURS)
+    ]
+)
 
 
 @njit
 def update_item(grid, i, j, next_grid):
-
-    # check if empty
+    # check if the grid is empty
     if grid[i, j, 0] == 0:
-        return None
+        return [(i, j, i, j)]
 
     direction = [-1, 1][random.randint(0, 1)]
     # move down
@@ -28,12 +29,13 @@ def update_item(grid, i, j, next_grid):
 
         if grid[i + 1, j][0] == 0 and next_grid[i + 1, j][0] == 0:
 
-            # swap the grain to its new position
+            # list of all swaps to be made
             swaps = [(i, j, i + 1, j)]
 
             # move all cell above down too
             if i == 0:
-                return None
+                return [(i, j, i, j)]
+
             for new_i in range(i - 1, -1, -1):
 
                 if grid[new_i, j, 0] == 0:
@@ -45,7 +47,7 @@ def update_item(grid, i, j, next_grid):
 
     # check if lifetime is over
     if grid[i, j, 1] <= 0:
-        return None
+        return [(i, j, i, j)]
 
     # move left or right randomly
     if j + direction < COLS and j + direction >= 0:
@@ -61,7 +63,97 @@ def update_item(grid, i, j, next_grid):
     next_grid[i, j, 0] = grid[i, j, 0]
     next_grid[i, j, 1] = grid[i, j, 1] - 1
 
-    return None
+    return [(i, j, i, j)]
+
+
+@njit
+def update_grid(grid: np.array, chunks: np.array, surface_array: np.array):
+
+    next_grid = np.copy(grid)
+
+    # Iterate over each chunk -------------------------------->
+    for i_chunk in range(len(chunks)):
+        for j_chunk in range(len(chunks[i_chunk])):
+
+            if chunks[i_chunk, j_chunk] <= 0:
+
+                continue
+
+            # find real range chunk
+            start_i = max(0, j_chunk * CHUNK_SIZE - 1)
+            end_i = min(start_i + CHUNK_SIZE + 1, ROWS)
+
+            start_j = max(0, i_chunk * CHUNK_SIZE - 1)
+            end_j = min(start_j + CHUNK_SIZE + 1, COLS)
+
+            # pick the direction to iterate
+            i_range = (
+                range(end_i - 1, start_i - 1, -1)
+                if random.random() < 0.5
+                else range(start_i, end_i)
+            )
+
+            j_range = (
+                range(start_j, end_j)
+                if random.random() < 0.5
+                else range(end_j - 1, start_j - 1, -1)
+            )
+
+            change = False
+            for i in i_range:
+                for j in j_range:
+
+                    swaps = update_item(grid, i, j, next_grid)
+
+                    if not swaps:
+                        continue
+                    for i, j, new_i, new_j in swaps:
+                        if i == new_i and j == new_j:
+                            continue
+                        change = True
+
+                        # swap to the next position
+
+                        next_grid[new_i, new_j, 0] = grid[i, j, 0]
+                        next_grid[new_i, new_j, 1] = grid[i, j, 1] - 1
+
+                        # reset the current position
+                        next_grid[i, j] = 0
+                        grid[i, j] = 0
+
+                        # draw the new position
+                        surface_array[j, i, :] = colours_values[0]
+                        surface_array[new_j, new_i, :] = colours_values[
+                            next_grid[new_i, new_j, 0]
+                        ]
+                        # upadate the chunk
+                        chunks[int(j / CHUNK_SIZE), int(i / CHUNK_SIZE)] = 5
+
+            if not change and chunks[i_chunk, j_chunk] > 0:
+                chunks[i_chunk, j_chunk] -= 1
+
+            else:
+                for i in range(max(0, i_chunk - 1), min(i_chunk + 3, len(chunks))):
+
+                    for j in range(
+                        max(0, j_chunk - 1), min(j_chunk + 3, len(chunks[0]))
+                    ):
+                        if i == i_chunk and j == j_chunk:
+                            continue
+
+                        empty = np.all(
+                            next_grid[
+                                j * CHUNK_SIZE : min((j + 1) * CHUNK_SIZE, ROWS) + 1,
+                                i * CHUNK_SIZE : min((i + 1) * CHUNK_SIZE, COLS) + 1,
+                            ]
+                            == 0
+                        )
+                        if chunks[i, j] == 0:
+                            if not empty:
+
+                                chunks[i, j] = 1
+
+    return next_grid, chunks, surface_array
 
 
 class Grid:
@@ -156,87 +248,15 @@ class Grid:
                 )
 
     def update_grid(self):
-        next_grid = deepcopy(self.grid)
 
-        # Iterate over each chunk -------------------------------->
-        for i_chunk in range(len(self.chunks)):
-            for j_chunk in range(len(self.chunks[i_chunk])):
+        data = update_grid(self.grid, self.chunks, self.surface_array)
 
-                if self.chunks[i_chunk, j_chunk] <= 0:
-
-                    continue
-
-                # find real range chunk
-                start_i = max(0, i_chunk * CHUNK_SIZE - 1)
-                end_i = min(start_i + CHUNK_SIZE + 1, COLS)
-
-                start_j = max(0, j_chunk * CHUNK_SIZE - 1)
-                end_j = min(start_j + CHUNK_SIZE + 1, ROWS)
-
-                # pick the direction to iterate
-                i_range = (
-                    range(end_i - 1, start_i - 1, -1)
-                    if random.random() < 0.5
-                    else range(start_i, end_i)
-                )
-
-                j_range = (
-                    range(start_j, end_j)
-                    if random.random() < 0.5
-                    else range(end_j - 1, start_j - 1, -1)
-                )
-
-                change = False
-
-                for i in i_range:
-                    for j in j_range:
-                        swaps = update_item(self.grid, j, i, next_grid)
-                        if not swaps:
-                            continue
-
-                        change = True
-                        for swap in swaps:
-                            self.swap_grain(*swap, next_grid)
-
-                if not change and self.chunks[i_chunk, j_chunk] > 0:
-                    self.chunks[i_chunk, j_chunk] -= 1
-                else:
-
-                    self.check_neighbours(i_chunk, j_chunk)
-
-        self.grid = next_grid
+        self.grid, self.chunks, self.surface_array = data
+        return
 
     def clear_grain(self, i, j):
         self.grid[i, j] = 0
-        self.surface_array[j, i, :] = colours_dict[self.grid[i, j, 0]]
-
-    def swap_grain(self, i, j, new_i, new_j, next_grid):
-        # swap to the next position
-        next_grid[new_i, new_j, 0] = self.grid[i, j, 0]
-        next_grid[new_i, new_j, 1] = self.grid[i, j, 1] - 1
-
-        # reset the current position
-        next_grid[i, j] = 0
-        self.grid[i, j] = 0
-
-        # draw the new position
-        self.surface_array[j, i, :] = colours_dict[0]
-        self.surface_array[new_j, new_i, :] = colours_dict[next_grid[new_i, new_j, 0]]
-
-        # upadate the chunk
-
-        self.chunks[int(j / CHUNK_SIZE), int(i / CHUNK_SIZE)] = 5
-
-    def check_neighbours(self, i_chunk, j_chunk):
-        for i in range(max(0, i_chunk - 1), min(i_chunk + 2, len(self.chunks))):
-
-            for j in range(max(0, j_chunk - 1), min(j_chunk + 2, len(self.chunks[0]))):
-                if self.chunks[i, j] == 0:
-                    if np.all(self.chunks[i, j] == 0):
-
-                        self.chunks[i, j] = 1
-                    else:
-                        self.chunks[i, j] = -1
+        self.surface_array[j, i, :] = colours_values[self.grid[i, j, 0]]
 
     def piece_touching(self, i, j):
         return not self.grid[i, j, 0] == 0
@@ -253,7 +273,7 @@ class Grid:
             self.grid[i : i + 10, j : j + 10, 0] = colour
             self.grid[i : i + 10, j : j + 10, 1] = 50
 
-            self.surface_array[j : j + 10, i : i + 10, :] = colours_dict[colour]
+            self.surface_array[j : j + 10, i : i + 10, :] = colours_values[colour]
 
     def update(self, win):
 
@@ -264,7 +284,7 @@ class Grid:
             score = self.next_clear()
 
         self.draw(win)
-        # self.draw_chunks(win)
+        self.draw_chunks(win)
         return score
 
     def clear(self):
@@ -272,7 +292,7 @@ class Grid:
         possible_colours = [
             colour
             for colour in range(1, len(COLOURS))
-            if all(colour in self.grid[:, i, 0] for i in range(COLS))
+            if all(np.any(self.grid[:, i, 0] == colour) for i in range(COLS))
         ]
 
         # For each possible colour
