@@ -284,10 +284,12 @@ class Grid:
             score = self.next_clear()
 
         self.draw(win)
-        self.draw_chunks(win)
+        # self.draw_chunks(win)
         return score
 
     def clear(self):
+        if np.all(self.chunks == 0):
+            return
         # Get all the possible colours
         possible_colours = [
             colour
@@ -306,37 +308,39 @@ class Grid:
             )
             pathfinder = tcod.path.Pathfinder(graph)
 
-            for i in range(ROWS):
+            if points := self.colour_clear(colour, pathfinder):
+                return points
 
-                if self.grid[i, 0, 0] == colour:
+    def colour_clear(self, colour, pathfinder):
+        for i in range(ROWS):
+            if self.grid[i, 0, 0] == colour:
+                if i != 0 and i != ROWS - 1:
+                    if (
+                        self.grid[i, 0, 0] == self.grid[i - 1, 0, 0]
+                        and self.grid[i, 0, 0] == self.grid[i + 1, 0, 0]
+                    ):
+                        continue
+                pathfinder.add_root((i, 0))
+                for i in range(ROWS):
                     if i != 0 and i != ROWS - 1:
                         if (
-                            self.grid[i, 0, 0] == self.grid[i - 1, 0, 0]
-                            and self.grid[i, 0, 0] == self.grid[i + 1, 0, 0]
+                            self.grid[i, -1, 0] == self.grid[i - 1, -1, 0]
+                            and self.grid[i, -1, 0] == self.grid[i + 1, -1, 0]
                         ):
                             continue
-                    pathfinder.add_root((i, 0))
-                    for i in range(ROWS):
-                        if i != 0 and i != ROWS - 1:
-                            if (
-                                self.grid[i, -1, 0] == self.grid[i - 1, -1, 0]
-                                and self.grid[i, -1, 0] == self.grid[i + 1, -1, 0]
-                            ):
-                                continue
 
-                        if self.grid[i, COLS - 1, 0] == colour:
+                    if self.grid[i, COLS - 1, 0] == colour:
 
-                            path = pathfinder.path_to((i, COLS - 1)).tolist()
+                        path = pathfinder.path_to((i, COLS - 1)).tolist()
 
-                            if len(path) > 1:
+                        if len(path) > 1:
+                            self.clearing = True
+                            self.path = set(tuple(i) for i in path)
+                            self.new_path = self.path
 
-                                self.clearing = True
-                                self.path = set(tuple(i) for i in path)
-                                self.new_path = self.path
-
-                                self.clear_colour = colour
-                                self.chunks[:, :] = 1
-                                return len(path) * POINTS_PER_GRAIN
+                            self.clear_colour = colour
+                            return len(path) * POINTS_PER_GRAIN
+        return False
 
     def next_clear(self):
         self.new_path = set()

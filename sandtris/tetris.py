@@ -19,8 +19,6 @@ font = get_font(20)
 
 
 class Piece:
-    x = 0
-    y = 0
 
     pieces = [
         [[4, 5, 6, 7], [2, 6, 10, 14], [8, 9, 10, 11], [1, 5, 9, 13]],  # I
@@ -128,8 +126,9 @@ class Sandtris:
         self.piece = None
 
     def go_side(self, dx):
-        if self.piece == None:
-            self.new_piece()
+        if not self.piece:
+            return
+
         old_x = self.piece.x
         self.piece.x += dx
         if self.intersects():
@@ -178,11 +177,11 @@ class Sandtris:
 
     def update(self, win):
         # Get new piece if needed
-        if self.piece == None:
+        if self.piece == None and not pygame.key.get_pressed()[pygame.K_o]:
             self.new_piece()
 
         # Move the piece down
-        if self.pressing_down or self.count % 3 == 0:
+        if self.pressing_down or self.count % 3 == 0 and self.piece:
             self.go_down()
 
         # Add to the score is the down key is pressed
