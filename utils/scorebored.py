@@ -3,7 +3,8 @@ import csv
 
 import pygame
 
-from consts import *
+
+from consts import WIDTH
 from utils import get_font
 
 

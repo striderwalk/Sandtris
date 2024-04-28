@@ -1,6 +1,6 @@
 import pygame
 
-from consts import *
+from consts import WIDTH, HEIGHT
 import utils
 from scenes import *
 
@@ -19,48 +19,36 @@ def main():
     clock = pygame.time.Clock()
 
     # Start menu
-    exit_data = menu_loop(win, clock)
-    if exit_data["code"] == "quit":
+
+    return_code = handle_scene(Menu(), win, clock)
+    if return_code["code"] == "quit":
         pygame.quit()
         return
+
     while True:
         # loading screen
-        exit_data = loading_loop(win, clock)
-        if exit_data["code"] == "quit":
+        return_code = handle_scene(Loading(), win, clock)
+        if return_code["code"] == "quit":
             pygame.quit()
             return
 
         # Run the main game loop
-        exit_data = main_game_loop(win, clock)
-        if exit_data["code"] == "quit":
+        return_code = handle_scene(Game(), win, clock)
+        if return_code["code"] == "quit":
             pygame.quit()
             return
-
-        # # loading screen
-        # exit_data = loading_loop(win, clock)
-        # if exit_data["code"] == "quit":
-        #     pygame.quit()
-        #     return
 
         # Run the lost game loop
-        score = exit_data["score"]
-        game_screen = exit_data["screen"]
-        exit_data = lost_loop(win, clock, score, game_screen)
+        score = return_code["score"]
+        game_screen = return_code["screen"]
+        return_code = handle_scene(Lost(game_screen, score), win, clock)
 
-        if exit_data["code"] == "quit":
+        if return_code["code"] == "quit":
             pygame.quit()
             return
-        else:
-            # loading screen
-            exit_data = loading_loop(win, clock)
-            if exit_data["code"] == "quit":
-                pygame.quit()
-                return
-            add_scoreboard_loop(win, clock, score)
 
-        # loading screen
-        exit_data = loading_loop(win, clock)
-        if exit_data["code"] == "quit":
+        return_code = handle_scene(Scoreboard(score), win, clock)
+        if return_code["code"] == "quit":
             pygame.quit()
             return
 

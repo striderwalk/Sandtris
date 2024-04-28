@@ -1,6 +1,6 @@
-import pygame
+import random
 
-from consts import *
+from consts import WIDTH
 from utils import draw_scoreboard, get_font
 
 large_font = get_font(38)
@@ -10,34 +10,24 @@ underline_large_font.set_underline(True)
 small_font = get_font(20)
 
 
-def loading_loop(win, clock):
-    # set the background colour
-    win.fill((235, 235, 235))
+class Loading:
+    def __init__(self):
+        self.life_time = random.binomialvariate(200, 0.6)
+        self.title_text = large_font.render("Loading", True, ((21, 54, 66)))
 
-    title_text = large_font.render("Loading", True, ((21, 54, 66)))
-    win.blit(title_text, ((WIDTH - title_text.get_width()) / 2, 50))
-    draw_scoreboard(win)
+    def draw(self, win):
+        # draw the screen
+        win.blit(self.title_text, ((WIDTH - self.title_text.get_width()) / 2, 50))
+        draw_scoreboard(win)
 
-    # main loop -------------------------------->
-    for _ in range(500):
+    def update(self, win):
+        # loading time
+        self.life_time -= 1
+        if self.life_time < 0:
+            return {"code": "done"}
 
-        pygame.display.flip()
-        # Handle pygame events -------------------------------->
-        for event in pygame.event.get():
-            # Game exiting
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                return {"code": "quit"}
+        # draw the screen
+        self.draw(win)
 
-            if event.type == pygame.KEYDOWN:
-                # Game exiting
-                if event.key == pygame.K_ESCAPE:
-                    pygame.quit()
-                    return {"code": "quit"}
-
-            pygame.display.flip()
-            pygame.display.set_caption(f"FPS: {clock.get_fps()}")
-
-            clock.tick(FPS)
-
-    return {"code": "again"}
+    def handle_event(self, event):
+        pass

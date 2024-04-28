@@ -177,7 +177,7 @@ class Sandtris:
 
     def update(self, win):
         # Get new piece if needed
-        if self.piece == None and not pygame.key.get_pressed()[pygame.K_o]:
+        if self.piece is None and not pygame.key.get_pressed()[pygame.K_o]:
             self.new_piece()
 
         # Move the piece down
@@ -211,7 +211,7 @@ class Sandtris:
         self.draw(win)
 
     def handle_event(self, event):
-        if self.piece == None:
+        if self.piece is None:
             return
 
         if event.type == pygame.KEYDOWN:

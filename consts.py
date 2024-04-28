@@ -15,3 +15,6 @@ CHUNK_SIZE = 10
 POINTS_PER_GRAIN = 0.01
 
 COLOURS = ["black", "red", "green", "blue", "yellow"]
+
+
+BACKGROUND_COLOUR = (235, 235, 235)

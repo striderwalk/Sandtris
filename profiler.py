@@ -14,8 +14,5 @@ st = pstats.Stats(pr)
 st.sort_stats(pstats.SortKey.TIME)
 st.print_stats()
 
-try:
-    st.dump_stats(filename="assets/data.prof")
-    os.system("snakeviz assets/data.prof")
-except:
-    print("exiting bye")
+st.dump_stats(filename="assets/data.prof")
+os.system("snakeviz assets/data.prof")

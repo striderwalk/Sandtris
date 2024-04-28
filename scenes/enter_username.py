@@ -1,6 +1,6 @@
 import pygame
 
-from consts import *
+from consts import WIDTH
 from utils import Button, draw_scoreboard, get_font, write_score
 
 large_font = get_font(38)
@@ -10,38 +10,35 @@ underline_large_font.set_underline(True)
 small_font = get_font(20)
 
 
-def add_scoreboard_loop(win, clock, score):
-    title_text = underline_large_font.render("Sandtris!", True, ((21, 54, 66)))
-    score_text_line_1 = small_font.render(
-        f"You scored {score} points!",
-        True,
-        ((21, 54, 66)),
-    )
-    score_text_line_2 = small_font.render(
-        f"Enter your name to get on the scoreboard.",
-        True,
-        ((21, 54, 66)),
-    )
+class Scoreboard:
+    def __init__(self, score):
+        self.game_score = score
 
-    current_username = ""
+        self.submit_button = Button(420, 160, 40, 47, ">")
+        self.current_username = ""
+        self.title_text = underline_large_font.render("Sandtris!", True, ((21, 54, 66)))
 
-    submit = Button(420, 160, 40, 47, ">")
+        self.score_text_line_1 = small_font.render(
+            f"You scored {self.game_score} points!", True, ((21, 54, 66)),
+        )
+        self.score_text_line_2 = small_font.render(
+            "Enter your name to get on the scoreboard.", True, ((21, 54, 66)),
+        )
 
-    while True:
-        submit.draw(win)
-        if submit.check_click():
-            if current_username != "":
-                write_score(current_username, score)
-                return {"code": "again"}
-            else:
-                submit.unclick()
+    def draw(self, win):
+        # draw all of the static text
+        win.blit(self.title_text, ((WIDTH - self.title_text.get_width()) / 2, 50))
+        win.blit(
+            self.score_text_line_1,
+            ((WIDTH - self.score_text_line_1.get_width()) / 2, 100),
+        )
+        win.blit(
+            self.score_text_line_2,
+            ((WIDTH - self.score_text_line_2.get_width()) / 2, 120),
+        )
 
         draw_scoreboard(win, 80)
-        win.blit(title_text, ((WIDTH - title_text.get_width()) / 2, 50))
-        win.blit(score_text_line_1, ((WIDTH - score_text_line_1.get_width()) / 2, 100))
-        win.blit(score_text_line_2, ((WIDTH - score_text_line_2.get_width()) / 2, 120))
-
-        text = small_font.render(current_username, True, (0, 0, 0))
+        text = small_font.render(self.current_username, True, (0, 0, 0))
 
         pygame.draw.rect(
             win,
@@ -52,33 +49,31 @@ def add_scoreboard_loop(win, clock, score):
 
         win.blit(text, ((WIDTH - text.get_width()) / 2, 170))
 
-        for event in pygame.event.get():
-            # Game exiting
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                return {"code": "quit"}
+    def update(self, win):
+        self.draw(win)
 
-            if event.type == pygame.KEYDOWN:
-                # Game exiting
-                if event.key == pygame.K_ESCAPE:
-                    pygame.quit()
-                    return {"code": "quit"}
-                if event.key == pygame.K_BACKSPACE and current_username:
-                    current_username = current_username[:-1]
+        self.submit_button.draw(win)
+        if self.submit_button.check_click():
+            if self.current_username != "":
+                write_score(self.current_username, self.game_score)
+                return {"code": "again"}
+            else:
+                self.submit_button.unclick()
 
-                if event.key == pygame.K_RETURN:
-                    submit.click()
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_BACKSPACE and self.current_username:
+                self.current_username = self.current_username[:-1]
 
-                if event.unicode and len(current_username) < 15:
-                    char = chr(event.key)
+            if event.key == pygame.K_RETURN:
+                self.submit_button.click()
 
-                    if char.isprintable():
-                        if pygame.key.get_mods() & pygame.KMOD_CAPS:
-                            current_username += char.upper()
+            if event.unicode and len(self.current_username) < 15:
+                char = chr(event.key)
 
-                        else:
-                            current_username += char
+                if char.isprintable():
+                    if pygame.key.get_mods() & pygame.KMOD_CAPS:
+                        self.current_username += char.upper()
 
-        clock.tick(FPS)
-        pygame.display.flip()
-        win.fill((235, 235, 235))
+                    else:
+                        self.current_username += char

@@ -1,13 +1,23 @@
+from curses import COLS
 import math
 import random
-from copy import deepcopy
+
 
 import numpy as np
 import pygame
 import tcod
-from numba import njit, jit
+from numba import njit
 
-from consts import *
+from consts import (
+    CHUNK_SIZE,
+    COLOURS,
+    GAME_SCREEN_HEIGHT,
+    GAME_SCREEN_WIDTH,
+    GRAIN_SIZE,
+    POINTS_PER_GRAIN,
+    ROWS,
+)
+
 
 colours_values = np.array(
     [
@@ -195,11 +205,7 @@ class Grid:
         surface = pygame.Surface((COLS, ROWS))
         pygame.surfarray.blit_array(surface, self.surface_array)
         surface = pygame.transform.scale(
-            surface,
-            (
-                COLS * GRAIN_SIZE,
-                ROWS * GRAIN_SIZE,
-            ),
+            surface, (COLS * GRAIN_SIZE, ROWS * GRAIN_SIZE,),
         )
 
         win.blit(surface, (0, 0))
@@ -238,12 +244,7 @@ class Grid:
                 pygame.draw.rect(
                     win,
                     pygame.Color("cyan"),
-                    (
-                        (i) * chunk_size,
-                        (j) * chunk_size,
-                        width,
-                        height,
-                    ),
+                    ((i) * chunk_size, (j) * chunk_size, width, height,),
                     width=1,
                 )
 

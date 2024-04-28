@@ -1,6 +1,3 @@
-import pygame
-
-from consts import *
 from sandtris.tetris import Sandtris
 from utils import get_font
 
@@ -11,37 +8,22 @@ underline_large_font.set_underline(True)
 small_font = get_font(20)
 
 
-def main_game_loop(win, clock):
-    tetris = Sandtris()
-    # main game loop -------------------------------->
-    while True:
+class Game:
+    def __init__(self):
+        self.tetris = Sandtris()
+
+    def draw(self, win):
 
         # Update the game
-        tetris.update(win)
+        self.tetris.update(win)
 
-        # handle pygame events -------------------------------->
-        for event in pygame.event.get():
-            # Game exiting
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                return {"code": "quit"}
+    def update(self, win):
 
-            if event.type == pygame.KEYDOWN:
-                # Game exiting
-                if event.key == pygame.K_ESCAPE:
-                    pygame.quit()
-                    return {"code": "quit"}
-
-            # If the event is needs to be handled by the tetris game
-            tetris.handle_event(event)
-
-        if tetris.lost:
+        # draw the game
+        self.draw(win)
+        if self.tetris.lost:
             screen = win.copy()
-            return {"code": "lost", "screen": screen, "score": int(tetris.score)}
+            return {"code": "lost", "screen": screen, "score": int(self.tetris.score)}
 
-        # update frame
-        pygame.display.flip()
-        pygame.display.set_caption(f"FPS: {clock.get_fps()}")
-        win.fill((215, 215, 215))
-
-        clock.tick(FPS)
+    def handle_event(self, event):
+        self.tetris.handle_event(event)
