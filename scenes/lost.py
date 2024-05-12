@@ -24,21 +24,29 @@ class Lost:
 
         # create the buttons
         self.exit_button = Button(
-            (WIDTH + (332)) / 2 - 160, (HEIGHT + 88) / 2 + 20, 160, 50, "Exit",
+            (WIDTH + (332)) / 2 - 160,
+            (HEIGHT + 88) / 2 + 20,
+            160,
+            50,
+            "Exit",
         )
         self.again_button = Button(
-            (WIDTH - 332) / 2, (HEIGHT + 88) / 2 + 20, 160, 50, "Play again",
+            (WIDTH - 332) / 2,
+            (HEIGHT + 88) / 2 + 20,
+            160,
+            50,
+            "Play again",
         )
-        # render the text -------------------------------->
 
-        self.lost_text = large_font.render("You have lost!", True, (21, 54, 66))
+        # render the text -------------------------------->
+        self.lost_text = large_font.render("You lost!", True, (21, 54, 66))
         self.score_text = small_font.render(
             f" You scored {int(self.game_score)} points", True, (21, 54, 66)
         )
 
         self.text_surface = pygame.Surface(
             (
-                self.lost_text.get_width() + 10,
+                self.score_text.get_width() + 10,
                 self.lost_text.get_height() + self.score_text.get_height() + 10,
             ),
             flags=pygame.SRCALPHA,
@@ -49,7 +57,7 @@ class Lost:
             (
                 5,
                 5,
-                self.lost_text.get_width(),
+                self.score_text.get_width(),
                 self.lost_text.get_height() + self.score_text.get_height(),
             ),
             border_radius=5,
@@ -58,7 +66,10 @@ class Lost:
         # add the text to the background
         self.text_surface.blit(
             self.lost_text,
-            ((self.text_surface.get_width() - self.lost_text.get_width()) / 2 + 5, 5,),
+            (
+                (self.text_surface.get_width() - self.lost_text.get_width()) / 2 + 5,
+                5,
+            ),
         )
 
         self.text_surface.blit(
@@ -75,7 +86,11 @@ class Lost:
         # draw the background
         pygame.draw.rect(
             win,
-            (215, 215, 215,),
+            (
+                215,
+                215,
+                215,
+            ),
             (
                 (WIDTH - self.text_surface.get_width()) / 2 - 4,
                 (HEIGHT - self.text_surface.get_height()) / 2 - 4,

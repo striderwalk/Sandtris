@@ -40,6 +40,7 @@ class Button:
     def draw(self, win):
         # draw button -------------------------------->
         pos = pygame.mouse.get_pos()
+
         # set colour
         if self.rect.collidepoint(pos):
             pygame.draw.rect(win, self.rect_colour, self.rect, border_radius=3)

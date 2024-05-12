@@ -1,7 +1,5 @@
-from curses import COLS
 import math
 import random
-
 
 import numpy as np
 import pygame
@@ -11,13 +9,13 @@ from numba import njit
 from consts import (
     CHUNK_SIZE,
     COLOURS,
+    COLS,
     GAME_SCREEN_HEIGHT,
     GAME_SCREEN_WIDTH,
     GRAIN_SIZE,
     POINTS_PER_GRAIN,
     ROWS,
 )
-
 
 colours_values = np.array(
     [
@@ -28,17 +26,11 @@ colours_values = np.array(
 
 
 @njit
-def update_item(grid, i, j, next_grid):
-    # check if the grid is empty
-    if grid[i, j, 0] == 0:
-        return [(i, j, i, j)]
-
-    direction = [-1, 1][random.randint(0, 1)]
-    # move down
+def update_item(box: np.array, i: int, j: int, next_box: np.array):
+    # move down ---------------------------------------------------------------->
     if i < ROWS - 1:
-
-        if grid[i + 1, j][0] == 0 and next_grid[i + 1, j][0] == 0:
-
+        # return move_down(box, i, j, next_box)
+        if box[i + 1, j][0] == 0 and next_box[i + 1, j][0] == 0:
             # list of all swaps to be made
             swaps = [(i, j, i + 1, j)]
 
@@ -48,38 +40,39 @@ def update_item(grid, i, j, next_grid):
 
             for new_i in range(i - 1, -1, -1):
 
-                if grid[new_i, j, 0] == 0:
+                if box[new_i, j, 0] == 0:
                     break
 
                 swaps.append((new_i, j, new_i + 1, j))
 
             return swaps
 
-    # check if lifetime is over
-    if grid[i, j, 1] <= 0:
+    # check if items lifetime is over
+    if box[i, j, 1] <= 0:
         return [(i, j, i, j)]
 
-    # move left or right randomly
-    if j + direction < COLS and j + direction >= 0:
-        if grid[i, j + direction][0] == 0 and next_grid[i, j + direction][0] == 0:
+    # move left or right randomly -------------------------------->
+    direction = [-1, 1][random.randint(0, 1)]
+    new_j = j + direction
+    if new_j < COLS and new_j >= 0:
+        if box[i, new_j][0] == 0 and next_box[i, new_j][0] == 0:
+            return [(i, j, i, new_j)]
 
-            return [(i, j, i, j + direction)]
+    new_j = j - direction
+    if new_j < COLS and new_j >= 0:
+        if box[i, new_j][0] == 0 and next_box[i, new_j][0] == 0:
+            return [(i, j, i, new_j)]
 
-    if j - direction < COLS and j - direction >= 0:
-        if grid[i, j - direction][0] == 0 and next_grid[i, j - direction][0] == 0:
-
-            return [(i, j, i, j - direction)]
-
-    next_grid[i, j, 0] = grid[i, j, 0]
-    next_grid[i, j, 1] = grid[i, j, 1] - 1
+    next_box[i, j, 0] = box[i, j, 0]
+    next_box[i, j, 1] = box[i, j, 1] - 1
 
     return [(i, j, i, j)]
 
 
 @njit
-def update_grid(grid: np.array, chunks: np.array, surface_array: np.array):
+def update_box(grainbox: np.array, chunks: np.array, surface_array: np.array):
 
-    next_grid = np.copy(grid)
+    next_box = np.copy(grainbox)
 
     # Iterate over each chunk -------------------------------->
     for i_chunk in range(len(chunks)):
@@ -112,8 +105,10 @@ def update_grid(grid: np.array, chunks: np.array, surface_array: np.array):
             change = False
             for i in i_range:
                 for j in j_range:
-
-                    swaps = update_item(grid, i, j, next_grid)
+                    # Pass in the box if empty at i,j
+                    if grainbox[i, j, 0] == 0:
+                        continue
+                    swaps = update_item(grainbox, i, j, next_box)
 
                     if not swaps:
                         continue
@@ -124,17 +119,17 @@ def update_grid(grid: np.array, chunks: np.array, surface_array: np.array):
 
                         # swap to the next position
 
-                        next_grid[new_i, new_j, 0] = grid[i, j, 0]
-                        next_grid[new_i, new_j, 1] = grid[i, j, 1] - 1
+                        next_box[new_i, new_j, 0] = grainbox[i, j, 0]
+                        next_box[new_i, new_j, 1] = grainbox[i, j, 1] - 1
 
                         # reset the current position
-                        next_grid[i, j] = 0
-                        grid[i, j] = 0
+                        next_box[i, j] = 0
+                        grainbox[i, j] = 0
 
                         # draw the new position
                         surface_array[j, i, :] = colours_values[0]
                         surface_array[new_j, new_i, :] = colours_values[
-                            next_grid[new_i, new_j, 0]
+                            next_box[new_i, new_j, 0]
                         ]
                         # upadate the chunk
                         chunks[int(j / CHUNK_SIZE), int(i / CHUNK_SIZE)] = 5
@@ -152,7 +147,7 @@ def update_grid(grid: np.array, chunks: np.array, surface_array: np.array):
                             continue
 
                         empty = np.all(
-                            next_grid[
+                            next_box[
                                 j * CHUNK_SIZE : min((j + 1) * CHUNK_SIZE, ROWS) + 1,
                                 i * CHUNK_SIZE : min((i + 1) * CHUNK_SIZE, COLS) + 1,
                             ]
@@ -163,14 +158,14 @@ def update_grid(grid: np.array, chunks: np.array, surface_array: np.array):
 
                                 chunks[i, j] = 1
 
-    return next_grid, chunks, surface_array
+    return next_box, chunks, surface_array
 
 
-class Grid:
+class GrainBox:
     def __init__(self):
 
         # Store the sand
-        self.grid = np.zeros((ROWS, COLS, 2), np.int8)
+        self.box = np.zeros((ROWS, COLS, 2), np.int8)
 
         self.surface_array = np.zeros((COLS, ROWS, 3), np.int8)
 
@@ -189,7 +184,7 @@ class Grid:
     def check_chunks(self):
         for i in range(len(self.chunks)):
             for j in range(len(self.chunks[i])):
-                chunk = self.grid[
+                chunk = self.box[
                     i * CHUNK_SIZE + 1 : min(i * CHUNK_SIZE + CHUNK_SIZE + 1, COLS + 1),
                     j * CHUNK_SIZE + 1 : min(j * CHUNK_SIZE + CHUNK_SIZE + 1, ROWS + 1),
                 ]
@@ -205,7 +200,11 @@ class Grid:
         surface = pygame.Surface((COLS, ROWS))
         pygame.surfarray.blit_array(surface, self.surface_array)
         surface = pygame.transform.scale(
-            surface, (COLS * GRAIN_SIZE, ROWS * GRAIN_SIZE,),
+            surface,
+            (
+                COLS * GRAIN_SIZE,
+                ROWS * GRAIN_SIZE,
+            ),
         )
 
         win.blit(surface, (0, 0))
@@ -244,23 +243,28 @@ class Grid:
                 pygame.draw.rect(
                     win,
                     pygame.Color("cyan"),
-                    ((i) * chunk_size, (j) * chunk_size, width, height,),
+                    (
+                        (i) * chunk_size,
+                        (j) * chunk_size,
+                        width,
+                        height,
+                    ),
                     width=1,
                 )
 
-    def update_grid(self):
+    def update_box(self):
 
-        data = update_grid(self.grid, self.chunks, self.surface_array)
+        data = update_box(self.box, self.chunks, self.surface_array)
 
-        self.grid, self.chunks, self.surface_array = data
+        self.box, self.chunks, self.surface_array = data
         return
 
     def clear_grain(self, i, j):
-        self.grid[i, j] = 0
-        self.surface_array[j, i, :] = colours_values[self.grid[i, j, 0]]
+        self.box[i, j] = 0
+        self.surface_array[j, i, :] = colours_values[self.box[i, j, 0]]
 
     def piece_touching(self, i, j):
-        return not self.grid[i, j, 0] == 0
+        return not self.box[i, j, 0] == 0
 
     def place(self, image, colour):
         self.clear_puase = 0
@@ -271,16 +275,17 @@ class Grid:
                 math.floor((i / CHUNK_SIZE) - 1) : math.ceil((i / CHUNK_SIZE) + 1),
             ] = 5
 
-            self.grid[i : i + 10, j : j + 10, 0] = colour
-            self.grid[i : i + 10, j : j + 10, 1] = 50
+            self.box[i : i + 10, j : j + 10, 0] = colour
+            self.box[i : i + 10, j : j + 10, 1] = 50
 
             self.surface_array[j : j + 10, i : i + 10, :] = colours_values[colour]
 
     def update(self, win):
 
         if not self.clearing:
-            self.update_grid()
+            self.update_box()
             score = self.clear()
+
         else:
             score = self.next_clear()
 
@@ -295,7 +300,7 @@ class Grid:
         possible_colours = [
             colour
             for colour in range(1, len(COLOURS))
-            if all(np.any(self.grid[:, i, 0] == colour) for i in range(COLS))
+            if all(np.any(self.box[:, i, 0] == colour) for i in range(COLS))
         ]
 
         # For each possible colour
@@ -303,7 +308,7 @@ class Grid:
 
             # Setup the graph for the given colour
             graph = tcod.path.SimpleGraph(
-                cost=np.where(self.grid != colour, 0, self.grid)[:, :, 0],
+                cost=np.where(self.box != colour, 0, self.box)[:, :, 0],
                 cardinal=2,
                 diagonal=3,
             )
@@ -314,23 +319,23 @@ class Grid:
 
     def colour_clear(self, colour, pathfinder):
         for i in range(ROWS):
-            if self.grid[i, 0, 0] == colour:
+            if self.box[i, 0, 0] == colour:
                 if i != 0 and i != ROWS - 1:
                     if (
-                        self.grid[i, 0, 0] == self.grid[i - 1, 0, 0]
-                        and self.grid[i, 0, 0] == self.grid[i + 1, 0, 0]
+                        self.box[i, 0, 0] == self.box[i - 1, 0, 0]
+                        and self.box[i, 0, 0] == self.box[i + 1, 0, 0]
                     ):
                         continue
                 pathfinder.add_root((i, 0))
                 for i in range(ROWS):
                     if i != 0 and i != ROWS - 1:
                         if (
-                            self.grid[i, -1, 0] == self.grid[i - 1, -1, 0]
-                            and self.grid[i, -1, 0] == self.grid[i + 1, -1, 0]
+                            self.box[i, -1, 0] == self.box[i - 1, -1, 0]
+                            and self.box[i, -1, 0] == self.box[i + 1, -1, 0]
                         ):
                             continue
 
-                    if self.grid[i, COLS - 1, 0] == colour:
+                    if self.box[i, COLS - 1, 0] == colour:
 
                         path = pathfinder.path_to((i, COLS - 1)).tolist()
 
@@ -349,19 +354,19 @@ class Grid:
 
         for i, j in self.path:
             # Cardinals
-            if j + 1 < COLS and self.grid[i, j + 1, 0] == self.clear_colour:
+            if j + 1 < COLS and self.box[i, j + 1, 0] == self.clear_colour:
                 self.new_path.add((i, j + 1))
                 next_path.add((i, j + 1))
 
-            if j - 1 >= 0 and self.grid[i, j - 1, 0] == self.clear_colour:
+            if j - 1 >= 0 and self.box[i, j - 1, 0] == self.clear_colour:
                 self.new_path.add((i, j - 1))
                 next_path.add((i, j - 1))
 
-            if i + 1 < ROWS and self.grid[i + 1, j, 0] == self.clear_colour:
+            if i + 1 < ROWS and self.box[i + 1, j, 0] == self.clear_colour:
                 self.new_path.add((i + 1, j))
                 next_path.add((i + 1, j))
 
-            if i - 1 >= 0 and self.grid[i - 1, j, 0] == self.clear_colour:
+            if i - 1 >= 0 and self.box[i - 1, j, 0] == self.clear_colour:
                 self.new_path.add((i - 1, j))
                 next_path.add((i - 1, j))
 
@@ -369,7 +374,7 @@ class Grid:
             if (
                 j + 1 < COLS
                 and i + 1 < ROWS
-                and self.grid[i + 1, j + 1, 0] == self.clear_colour
+                and self.box[i + 1, j + 1, 0] == self.clear_colour
             ):
                 self.new_path.add((i + 1, j + 1))
                 next_path.add((i + 1, j + 1))
@@ -377,7 +382,7 @@ class Grid:
             if (
                 j + 1 < COLS
                 and i - 1 >= 0
-                and self.grid[i - 1, j + 1, 0] == self.clear_colour
+                and self.box[i - 1, j + 1, 0] == self.clear_colour
             ):
                 self.new_path.add((i - 1, j + 1))
                 next_path.add((i - 1, j + 1))
@@ -385,7 +390,7 @@ class Grid:
             if (
                 j - 1 >= 0
                 and i + 1 < ROWS
-                and self.grid[i + 1, j - 1, 0] == self.clear_colour
+                and self.box[i + 1, j - 1, 0] == self.clear_colour
             ):
                 self.new_path.add((i, j - 1))
                 next_path.add((i + 1, j - 1))
@@ -393,7 +398,7 @@ class Grid:
             if (
                 j - 1 >= 0
                 and i - 1 >= 0
-                and self.grid[i - 1, j - 1, 0] == self.clear_colour
+                and self.box[i - 1, j - 1, 0] == self.clear_colour
             ):
                 self.new_path.add((i - 1, j - 1))
                 next_path.add((i - 1, j - 1))
@@ -402,6 +407,7 @@ class Grid:
             self.clear_grain(i, j)
 
         if self.path == next_path:
+            self.chunks[:, :] = 1
             self.clearing = False
             return 0
         self.path = next_path

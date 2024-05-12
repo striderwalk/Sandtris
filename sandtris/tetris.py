@@ -3,6 +3,7 @@ import random
 import pygame
 
 from consts import (
+    BACKGROUND_COLOUR,
     COLS,
     GAME_SCREEN_HEIGHT,
     GAME_SCREEN_WIDTH,
@@ -12,7 +13,7 @@ from consts import (
     COLOURS,
 )
 from utils.font_util import get_font
-from sandtris.grid import Grid
+from sandtris.grainbox import GrainBox
 
 
 font = get_font(20)
@@ -76,16 +77,29 @@ class Piece:
 
 class Sandtris:
     def __init__(self):
-        self.grid = Grid()
 
+        # Create the grainbox
+        self.grainbox = GrainBox()
+
+        # Create the first two pieces
+        # TODO: uses the correct generation method
         self.piece = Piece(13, 0)
         self.next_piece = Piece(13, 0)
-        self.score = 0
+
+        # game state -------------------------------->
+        # the level
+        self.level = 1
+        self.clear_count = 0
         self.count = 0
+        # the score
+        self.score = 0
+        # keys pressed
         self.pressing_down = False
+        # lost
         self.lost = False
 
     def new_piece(self):
+        """Swap the next piece to the current piece and check if the player has lost."""
 
         self.piece = self.next_piece
         self.next_piece = Piece(13, 0)
@@ -96,7 +110,12 @@ class Sandtris:
         for i, j in self.piece.full_image():
             x = j * 10 + self.piece.x
             y = i * 10 + self.piece.y
-            if y > ROWS - 1 or x > COLS - 1 or x < 0 or self.grid.piece_touching(y, x):
+            if (
+                y > ROWS - 1
+                or x > COLS - 1
+                or x < 0
+                or self.grainbox.piece_touching(y, x)
+            ):
                 return True
 
     def press_space(self):
@@ -115,7 +134,7 @@ class Sandtris:
             self.freeze()
 
     def freeze(self):
-        self.grid.place(
+        self.grainbox.place(
             [
                 (i * 10 + self.piece.y, j * 10 + self.piece.x)
                 for i, j in self.piece.image
@@ -151,16 +170,25 @@ class Sandtris:
                 break
 
     def score_add(self, score):
+
         self.score += score
 
     def draw(self, win):
         # Draw the score
-        text = font.render(f"Score {int(self.score)}", True, pygame.Color("black"))
-        win.blit(text, (400, 30))
+        score_text = font.render(
+            f"Score: {int(self.score)}", True, pygame.Color("black")
+        )
+        level_text = font.render(
+            f"Level: {int(self.level)}", True, pygame.Color("black")
+        )
+
+        win.blit(score_text, (400, 30))
+        win.blit(level_text, (400, 50))
 
         # Draw the next piece
         surface = pygame.Surface((200, 150))
-        surface.fill((215, 215, 215))
+        surface.fill(BACKGROUND_COLOUR)
+        pygame.draw.rect(surface, (21, 54, 66), (0, 0, 200, 150), width=3)
         for i, j in self.next_piece.image:
 
             pygame.draw.rect(
@@ -173,7 +201,7 @@ class Sandtris:
                     PIECE_SIZE - 1,
                 ],
             )
-        win.blit(surface, ((400, 60)))
+        win.blit(surface, ((400, 90)))
 
     def update(self, win):
         # Get new piece if needed
@@ -181,7 +209,10 @@ class Sandtris:
             self.new_piece()
 
         # Move the piece down
-        if self.pressing_down or self.count % 3 == 0 and self.piece:
+
+        if (
+            self.pressing_down or self.count % max(20 - self.level, 1) == 0
+        ) and self.piece:
             self.go_down()
 
         # Add to the score is the down key is pressed
@@ -197,10 +228,20 @@ class Sandtris:
 
         screen = pygame.Surface((GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT))
         # update the sand simulation
-        new_points = self.grid.update(screen)
-        if new_points:
-            # added any new points
-            self.score_add(new_points)
+        new_points = self.grainbox.update(screen)
+
+        if new_points is not None:
+            if new_points > 0:
+                # added any new points
+                self.score_add(new_points)
+            else:
+                # increment the level when clearing is done
+                if self.clear_count >= 10:
+                    self.level += 1
+                    self.clear_count = 0
+
+                else:
+                    self.clear_count += 1
 
         # draw the current piece
         if self.piece:
